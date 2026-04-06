@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Klasik Puan</title>
+<title>Ali Kemal Snake.io - 0 Puan Başlangıç</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   body { background: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; touch-action: none; }
@@ -78,13 +78,11 @@ function init() {
     snakes = []; particles = [];
     let p = createSnake(document.getElementById("nameInput").value || "Ali Kemal", "#00ff00", false);
     p.x = WORLD_SIZE/2; p.y = WORLD_SIZE/2;
-    p.score = 50; // Başlangıç uzunluğu (Sadece görsel için, puan 0 başlar)
     snakes.push(p);
     
     for(let i=0; i<30; i++) {
         let b = createSnake("Bot_"+i, `hsl(${Math.random()*360}, 85%, 55%)`, true);
         b.x = Math.random()*WORLD_SIZE; b.y = Math.random()*WORLD_SIZE;
-        b.score = 50;
         snakes.push(b);
     }
     for(let i=0; i<800; i++) spawnParticle();
@@ -92,8 +90,9 @@ function init() {
 }
 
 function createSnake(name, color, isBot) {
+    // Score ve Segments artık tamamen sıfır veya minimumda başlıyor
     return { name, color, isBot, alive: true, x:0, y:0, angle: Math.random()*Math.PI*2, 
-             actualScore: 0, speed: isBot ? diffSetting.botSpeed : 6, score: 50, segments: [] };
+             actualScore: 0, speed: isBot ? diffSetting.botSpeed : 6, score: 5, segments: [] };
 }
 
 function spawnParticle(x, y) {
@@ -153,22 +152,24 @@ function update() {
         if(s.x<0 || s.x>WORLD_SIZE || s.y<0 || s.y>WORLD_SIZE) s.alive = false;
 
         s.segments.unshift({x: s.x, y: s.y});
-        if(s.segments.length > s.score/2.8) s.segments.pop();
+        // Yılanın boyunu skora göre ayarla (Skor arttıkça segment sayısı artar)
+        if(s.segments.length > s.score + 5) s.segments.pop();
 
-        // PUAN SİSTEMİ: 1 YEM = 1 PUAN
         particles.forEach((p, i) => {
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
                 particles.splice(i,1); 
-                s.actualScore += 1; // Ekranda görünen puan
-                s.score += 2; // Yılanın uzaması için gereken değer
-                if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.actualScore;
+                s.actualScore += 1; // Ekrandaki puan
+                s.score += 2; // Yılanın uzama miktarı
+                if(!s.isBot) {
+                    document.getElementById("scoreBox").innerText = "Puan: " + s.actualScore;
+                }
                 spawnParticle();
             }
         });
 
         snakes.forEach(other => {
             if(!other.alive) return;
-            other.segments.slice(12).forEach(part => {
+            other.segments.slice(8).forEach(part => {
                 if(Math.hypot(s.x-part.x, s.y-part.y) < 16) s.alive = false;
             });
         });
@@ -203,7 +204,8 @@ function draw() {
         ctx.fillStyle = s.color;
         s.segments.forEach((p, i) => {
             ctx.beginPath(); 
-            let r = i===0 ? 16 : 13-(i*0.02>7?7:i*0.02);
+            // Baş kısmı biraz daha büyük, gövde incelerek gider
+            let r = i===0 ? 16 : 13-(i*0.05>7?7:i*0.05);
             ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill();
             if(i===0) { 
                 ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(p.x,p.y,5.5,0,Math.PI*2); ctx.fill(); 
