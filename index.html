@@ -2,18 +2,43 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake</title>
+<title>Ali Kemal Snake.io</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
   canvas { background: #050505; display: block; }
+  
+  /* ÜST PANELLER */
   #ui { position: fixed; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
-  #scoreBox { font-size: 30px; color: #00ff00; font-weight: bold; }
-  #godTag { display: none; color: #fff; background: #ff0000; padding: 10px; border-radius: 8px; margin-top: 10px; font-weight: bold; border: 2px solid white; }
-  #leaderboard { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 15px; border: 2px solid #ffd700; border-radius: 10px; min-width: 180px; }
+  #scoreBox { font-size: 32px; color: #00ff00; font-weight: bold; }
+  #godTag { 
+    display: none; color: white; background: red; padding: 8px 15px; 
+    border-radius: 8px; margin-top: 10px; font-weight: bold; 
+    border: 2px solid white; box-shadow: 0 0 15px red; 
+  }
+
+  #leaderboard { 
+    position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); 
+    padding: 15px; border: 2px solid #ffd700; border-radius: 12px; min-width: 180px; 
+  }
   .row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
-  #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: #111; padding: 30px; border-radius: 20px; text-align: center; border: 4px solid #ffd700; }
-  button { font-size: 20px; padding: 10px 30px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; }
-  input { font-size: 18px; padding: 10px; border-radius: 8px; margin: 10px; text-align: center; }
+
+  /* GİRİŞ EKRANI */
+  #menu { 
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+    z-index: 200; background: #111; padding: 40px; border-radius: 25px; 
+    text-align: center; border: 5px solid #ffd700; min-width: 300px;
+  }
+  
+  /* BOMBOŞ KUTU AYARI */
+  input { 
+    font-size: 20px; padding: 12px; border-radius: 10px; margin: 15px; 
+    text-align: center; width: 80%; background: #000; color: white; border: 2px solid #444;
+  }
+  
+  button { 
+    font-size: 22px; padding: 15px 40px; background: #28a745; color: white; 
+    border: none; cursor: pointer; border-radius: 12px; font-weight: bold; 
+  }
 </style>
 </head>
 <body>
@@ -24,15 +49,15 @@
 </div>
 
 <div id="leaderboard">
-    <h3 style="margin:0 0 10px 0; color:#ffd700; text-align:center;">SKORLAR</h3>
     <div id="leaderRows"></div>
 </div>
 
 <div id="menu">
-  <h1 style="color:#ffd700;">SNAKE.IO</h1>
-  <input type="text" id="nameInput" placeholder="İsmini Yaz..." maxlength="15">
+  <h1 style="color:#ffd700; margin-top:0;">SNAKE.IO</h1>
+  <p style="color:#888;">İsmini yaz:</p>
+  <input type="text" id="nameInput" value="" maxlength="15">
   <br>
-  <button onclick="startGame()">OYUNU BAŞLAT</button>
+  <button onclick="startGame()">BAŞLAT</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -53,14 +78,19 @@ window.onresize = resize;
 resize();
 
 function startGame() {
-    let inputName = document.getElementById("nameInput").value.trim();
-    if(inputName === "Ali Kemal") {
+    let name = document.getElementById("nameInput").value.trim();
+    
+    // Eğer kutuya "Ali Kemal" yazarsan Admin yetkilerin açılır
+    if(name === "Ali Kemal") {
         isAdmin = true;
-        inputName = "Ali Kemal [Admin]";
+        name = "Ali Kemal [Admin]";
+    } else {
+        isAdmin = false;
     }
+    
     document.getElementById("menu").style.display = "none";
     gameActive = true;
-    init(inputName || "Oyuncu");
+    init(name || "Oyuncu");
 }
 
 function init(pName) {
@@ -75,7 +105,7 @@ function init(pName) {
             angle: Math.random()*6, score: 5, segments: [], alive: true, isBot: true
         });
     }
-    for(let i=0; i<500; i++) particles.push({x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE});
+    for(let i=0; i<400; i++) particles.push({x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE});
     requestAnimationFrame(loop);
 }
 
@@ -83,6 +113,8 @@ window.onkeydown = (e) => {
     let k = e.key.toLowerCase();
     if(k === "arrowleft") turnDir = -0.09;
     if(k === "arrowright") turnDir = 0.09;
+    
+    // G tuşu sadece gerçek Ali Kemal girince çalışır
     if(k === "g" && isAdmin) {
         godMode = !godMode;
         document.getElementById("godTag").style.display = godMode ? "block" : "none";
@@ -101,8 +133,8 @@ function update() {
     snakes.forEach(s => {
         if(!s.alive) return;
         s.angle += s.isBot ? (Math.random()-0.5)*0.2 : turnDir;
-        s.x += Math.cos(s.angle) * 5;
-        s.y += Math.sin(s.angle) * 5;
+        s.x += Math.cos(s.angle) * 5.2;
+        s.y += Math.sin(s.angle) * 5.2;
 
         if(s.x < 0) s.x = WORLD_SIZE; if(s.x > WORLD_SIZE) s.x = 0;
         if(s.y < 0) s.y = WORLD_SIZE; if(s.y > WORLD_SIZE) s.y = 0;
@@ -125,7 +157,7 @@ function update() {
                 if(idx > 3 && Math.hypot(s.x - p.x, s.y - p.y) < 12) {
                     if(s.isBot || !godMode) {
                         s.alive = false;
-                        if(!s.isBot) location.reload();
+                        if(!s.isBot) setTimeout(() => location.reload(), 1000);
                     }
                 }
             });
@@ -158,12 +190,13 @@ function draw() {
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
-        if(!s.isBot && godMode) { ctx.shadowBlur = 15; ctx.shadowColor = "red"; }
+        if(!s.isBot && godMode) { ctx.shadowBlur = 20; ctx.shadowColor = "red"; }
         s.segments.forEach((seg, i) => {
             ctx.beginPath(); ctx.arc(seg.x, seg.y, i === 0 ? 15 : 12, 0, 7); ctx.fill();
         });
         ctx.shadowBlur = 0;
         ctx.fillStyle = "white";
+        ctx.font = "bold 14px Arial";
         ctx.fillText(s.name, s.x - 20, s.y - 20);
     });
     ctx.restore();
