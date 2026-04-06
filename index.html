@@ -2,164 +2,216 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake - Pro Edition</title>
+<title>Ali Kemal Snake.io - Dev Arena</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-  body { background: #111; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; margin: 0; overflow: hidden; }
-  canvas { background: black; display: block; margin: 10px auto; border: 4px solid #333; box-shadow: 0 0 20px rgba(0,255,0,0.1); }
-  
-  .screen { display: none; padding: 50px; }
+  body { background: #050505; color: white; font-family: sans-serif; margin: 0; overflow: hidden; touch-action: none; }
+  /* Harita çok büyük olduğu için bir pencereden bakıyormuşuz gibi olacak */
+  #viewport { width: 100vw; height: 100vh; overflow: hidden; position: relative; background: radial-gradient(circle, #111 1px, transparent 1px); background-size: 30px 30px; }
+  canvas { background: rgba(0,0,0,0.8); position: absolute; border: 5px solid #222; }
+  .screen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; background: rgba(0,0,0,0.9); padding: 30px; border-radius: 20px; text-align: center; border: 2px solid #00ff00; }
   .active { display: block; }
+  input { font-size: 20px; padding: 10px; border-radius: 10px; border: none; margin: 10px; width: 220px; text-align: center; }
+  button { font-size: 22px; padding: 10px 30px; border-radius: 10px; background: #28a745; color: white; border: none; cursor: pointer; }
+  #ui { position: fixed; top: 10px; left: 10px; z-index: 5; pointer-events: none; text-align: left; }
   
-  input { 
-    font-size: 18px; padding: 12px; border-radius: 8px; border: none; margin: 10px; 
-    width: 250px; text-align: center; background: #222; color: white; border: 2px solid #444;
-  }
-  
-  button { 
-    font-size: 20px; padding: 12px 30px; margin: 10px; cursor: pointer; 
-    border-radius: 8px; background: #28a745; color: white; border: none; transition: 0.3s;
-  }
-  button:hover { background: #218838; transform: scale(1.05); }
-
-  #status { font-weight: bold; color: #FFD700; }
-  #adminBadge { color: #FFD700; font-size: 24px; display: none; margin-bottom: 15px; }
-  
-  #controls { display: none; margin-top: 10px; }
-  @media (max-width: 768px) { #controls { display: block; } }
+  /* MOBİL TUŞLAR */
+  .controls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: none; grid-template-columns: repeat(3, 1fr); gap: 10px; z-index: 10; }
+  @media (max-width: 768px) { .controls { display: grid; } }
+  .btn-dir { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 25px; color: white; }
 </style>
 </head>
-<body style="touch-action: none;">
+<body>
 
-<div id="menu" class="screen active">
-  <div id="adminBadge">👑 ADMIN MODU AKTİF 👑</div>
-  <h1>Ali Kemal Snake</h1>
-  <p>İsmini yaz ve oyuna başla:</p>
-  <input type="text" id="nameInput" placeholder="Buraya yaz..." maxlength="15"><br>
-  <button onclick="goGame()">BAŞLAT</button>
+<div id="ui">
+    <div id="scoreBox" style="font-size: 24px; color: #00ff00;">Skor: 0</div>
+    <div id="adminTag" style="color: gold; font-weight: bold;"></div>
 </div>
 
-<div id="gameScreen" class="screen">
-  <h2 id="gameTitle">Normal Mod</h2>
-  <p>Skor: <span id="score">0</span> | <span id="playerInfo">Oyuncu: -</span></p>
-  <canvas id="game" width="400" height="400"></canvas>
-  
-  <div id="controls">
-    <button onclick="setDir('UP')">⬆️</button><br>
-    <button onclick="setDir('LEFT')">⬅️</button>
-    <button onclick="setDir('DOWN')">⬇️</button>
-    <button onclick="setDir('RIGHT')">➡️</button>
-  </div>
-  <br>
-  <button id="restartBtn" onclick="startGame()" style="display:none; background: #dc3545;">YENİDEN DENE</button>
+<div id="menu" class="screen active">
+  <h1 style="color:#00ff00;">SNAKE.IO ARENA</h1>
+  <p>Dev Haritada Savaş Başlıyor!</p>
+  <input type="text" id="nameInput" placeholder="Adını Yaz..." maxlength="12"><br>
+  <button onclick="goGame()">SAVAŞA KATIL</button>
+</div>
+
+<div id="viewport">
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<div class="controls">
+    <div style="grid-column:2" class="btn-dir" onclick="setDir('UP')">⬆️</div>
+    <div style="grid-column:1" class="btn-dir" onclick="setDir('LEFT')">⬅️</div>
+    <div style="grid-column:2" class="btn-dir" onclick="setDir('DOWN')">⬇️</div>
+    <div style="grid-column:3" class="btn-dir" onclick="setDir('RIGHT')">➡️</div>
 </div>
 
 <script>
-const canvas = document.getElementById("game");
+const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const box = 20;
 
-let snake, food, direction, score, game;
-let isGodMode = false;
+// --- DEV HARİTA AYARLARI ---
+const WORLD_SIZE = 2000; // Harita 2000x2000 piksel (Çok geniş!)
+const box = 20;
+canvas.width = WORLD_SIZE;
+canvas.height = WORLD_SIZE;
+
+let snakes = [];
+let particles = [];
+let mySnakeIndex = 0;
 let isAdmin = false;
+let isGodMode = false;
 
 function goGame() {
-  const name = document.getElementById("nameInput").value.trim();
-  
-  // SADECE ALİ KEMAL ADINI YAZAN ADMIN OLUR
-  if (name.toLowerCase() === "ali kemal" || name.toLowerCase() === "alikemal") {
-      isAdmin = true;
-      document.getElementById("playerInfo").innerHTML = "<span id='status'>👑 ADMIN</span>";
-      alert("Hoş geldin Ali Kemal! Oyun içinde 'L' tuşu ile duvarlardan geçişi açabilirsin.");
-  } else {
-      document.getElementById("playerInfo").innerText = "Oyuncu: " + (name || "Misafir");
-  }
-
-  document.getElementById("menu").classList.remove("active");
-  document.getElementById("gameScreen").classList.add("active");
-  startGame();
+    const name = document.getElementById("nameInput").value.trim() || "Oyuncu";
+    if (name.toLowerCase() === "ali kemal") {
+        isAdmin = true;
+        document.getElementById("adminTag").innerText = "👑 ADMIN MODU";
+    }
+    document.getElementById("menu").style.display = "none";
+    initGame(name);
 }
 
-function startGame() {
-  snake = [{x: 9 * box, y: 9 * box}];
-  direction = "RIGHT";
-  score = 0;
-  isGodMode = false;
-  document.getElementById("score").innerText = score;
-  document.getElementById("restartBtn").style.display = "none";
-  document.getElementById("gameTitle").innerText = "Normal Mod";
-  document.getElementById("gameTitle").style.color = "white";
-  
-  spawnFood();
-  clearInterval(game);
-  game = setInterval(draw, 120);
+function initGame(name) {
+    snakes = [];
+    particles = [];
+    
+    // Senin Yılanın
+    snakes.push(createSnake(name, "#00ff00", false));
+    
+    // 10 Tane Bot Yılan (Harita büyük olduğu için sayıları artırdık)
+    const botNames = ["Bot1", "Bot2", "Bot3", "Bot4", "Bot5", "Zeytin", "Fırtına", "Jet", "Aslan", "Kaplan"];
+    botNames.forEach(bn => snakes.push(createSnake(bn, `hsl(${Math.random()*360}, 70%, 50%)`, true)));
+
+    // Rastgele yemekler saç
+    for(let i=0; i<150; i++) spawnParticle(null, null);
+
+    setInterval(draw, 100);
 }
 
-function spawnFood() {
-    food = {
-        x: Math.floor(Math.random() * 19) * box,
-        y: Math.floor(Math.random() * 19) * box
+function createSnake(name, color, isBot) {
+    return {
+        name: name,
+        body: [{x: Math.random()*(WORLD_SIZE-100), y: Math.random()*(WORLD_SIZE-100)}],
+        dir: "RIGHT",
+        color: color,
+        isBot: isBot,
+        alive: true,
+        score: 0
     };
 }
 
-function setDir(dir) { direction = dir; }
+function spawnParticle(x, y) {
+    particles.push({
+        x: x ?? Math.random() * WORLD_SIZE,
+        y: y ?? Math.random() * WORLD_SIZE,
+        size: Math.random() * 5 + 3,
+        color: `hsl(${Math.random()*360}, 80%, 60%)`
+    });
+}
+
+function setDir(d) { snakes[0].dir = d; }
 
 document.addEventListener("keydown", e => {
-  if (e.key === "ArrowLeft" && direction !== "RIGHT") direction = "LEFT";
-  if (e.key === "ArrowUp" && direction !== "DOWN") direction = "UP";
-  if (e.key === "ArrowRight" && direction !== "LEFT") direction = "RIGHT";
-  if (e.key === "ArrowDown" && direction !== "UP") direction = "DOWN";
-  
-  // ADMIN HİLESİ: SADECE ADMIN "L" TUŞUNA BASINCA IŞINLANMA AÇILIR
-  if (e.key.toLowerCase() === 'l' && isAdmin) {
-      isGodMode = !isGodMode;
-      document.getElementById("gameTitle").innerText = isGodMode ? "🚀 ADMIN: IŞINLANMA AÇIK" : "Normal Mod";
-      document.getElementById("gameTitle").style.color = isGodMode ? "cyan" : "white";
-  }
+    if(e.key === "ArrowUp" && snakes[0].dir !== "DOWN") snakes[0].dir = "UP";
+    if(e.key === "ArrowDown" && snakes[0].dir !== "UP") snakes[0].dir = "DOWN";
+    if(e.key === "ArrowLeft" && snakes[0].dir !== "RIGHT") snakes[0].dir = "LEFT";
+    if(e.key === "ArrowRight" && snakes[0].dir !== "LEFT") snakes[0].dir = "RIGHT";
+    if(e.key.toLowerCase() === 'l' && isAdmin) {
+        isGodMode = !isGodMode;
+        document.getElementById("adminTag").innerText = isGodMode ? "🚀 IŞINLANMA AKTİF" : "👑 ADMIN MODU";
+    }
 });
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  // Yılanı ve elmayı çiz
-  snake.forEach((p, index) => {
-      ctx.fillText(index === 0 ? "🐲" : "🟢", p.x, p.y + 18);
-  });
-  ctx.fillText("🍎", food.x, food.y + 18);
+    ctx.clearRect(0, 0, WORLD_SIZE, WORLD_SIZE);
 
-  let headX = snake[0].x;
-  let headY = snake[0].y;
+    // Yemekleri (parçaları) çiz
+    particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+        ctx.fill();
+    });
 
-  if (direction === "LEFT") headX -= box;
-  if (direction === "UP") headY -= box;
-  if (direction === "RIGHT") headX += box;
-  if (direction === "DOWN") headY += box;
+    snakes.forEach(s => {
+        if (!s.alive) return;
 
-  // IŞINLANMA VEYA ÖLME KONTROLÜ
-  if (isGodMode) {
-      // Ölümsüzlük (Admin Hilesi) açıksa: Duvarın içinden geç diğer taraftan çık
-      if (headX < 0) headX = canvas.width - box;
-      else if (headX >= canvas.width) headX = 0;
-      if (headY < 0) headY = canvas.height - box;
-      else if (headY >= canvas.height) headY = 0;
-  } else {
-      // Normal Mod: Duvara veya kendine çarparsan ölürsün
-      if (headX < 0 || headY < 0 || headX >= canvas.width || headY >= canvas.height || snake.some(p => p.x === headX && p.y === headY)) {
-        clearInterval(game);
-        document.getElementById("restartBtn").style.display = "inline-block";
-        document.getElementById("gameTitle").innerText = "OYUN BİTTİ";
-        return;
-      }
-  }
+        // Bot Zekası
+        if (s.isBot && Math.random() < 0.2) {
+            const dirs = ["UP", "DOWN", "LEFT", "RIGHT"];
+            s.dir = dirs[Math.floor(Math.random()*4)];
+        }
 
-  if (headX === food.x && headY === food.y) {
-    score++;
-    document.getElementById("score").innerText = score;
-    spawnFood();
-  } else {
-    snake.pop();
-  }
+        let head = {x: s.body[0].x, y: s.body[0].y};
+        if (s.dir === "UP") head.y -= box;
+        if (s.dir === "DOWN") head.y += box;
+        if (s.dir === "LEFT") head.x -= box;
+        if (s.dir === "RIGHT") head.x += box;
 
-  snake.unshift({x: headX, y: headY});
+        // Işınlanma ve Duvar Kontrolü
+        if (isGodMode && !s.isBot) {
+            if (head.x < 0) head.x = WORLD_SIZE - box;
+            if (head.x >= WORLD_SIZE) head.x = 0;
+            if (head.y < 0) head.y = WORLD_SIZE - box;
+            if (head.y >= WORLD_SIZE) head.y = 0;
+        } else {
+            if (head.x < 0 || head.x >= WORLD_SIZE || head.y < 0 || head.y >= WORLD_SIZE) s.alive = false;
+        }
+
+        // --- SNAKE.IO STİLİ ÇARPIŞMA ---
+        snakes.forEach(other => {
+            if (!other.alive) return;
+            other.body.forEach(part => {
+                if (head.x === part.x && head.y === part.y && s !== other) {
+                    s.alive = false; // Birinin gövdesine çarpan PARÇALANIR
+                }
+            });
+        });
+
+        if (!s.alive) {
+            // ÖLÜNCE PARÇALARA AYRILMA
+            s.body.forEach(p => spawnParticle(p.x, p.y));
+            if (!s.isBot) setTimeout(() => location.reload(), 2000);
+            return;
+        }
+
+        s.body.unshift(head);
+
+        // Yemek Yeme
+        let ate = false;
+        particles.forEach((p, i) => {
+            if (Math.abs(head.x - p.x) < box && Math.abs(head.y - p.y) < box) {
+                particles.splice(i, 1);
+                ate = true;
+                if (!s.isBot) {
+                    s.score += 1;
+                    document.getElementById("scoreBox").innerText = "Skor: " + s.score;
+                }
+                if (particles.length < 150) spawnParticle(null, null);
+            }
+        });
+
+        if (!ate) s.body.pop();
+
+        // Yılanı Çiz
+        s.body.forEach((p, i) => {
+            ctx.fillStyle = i === 0 ? "white" : s.color;
+            ctx.shadowBlur = i === 0 ? 10 : 0;
+            ctx.shadowColor = s.color;
+            ctx.fillRect(p.x, p.y, box-2, box-2);
+        });
+        
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.fillText(s.name, head.x - 10, head.y - 10);
+    });
+
+    // KAMERA TAKİBİ (Ekran senin yılanını takip eder)
+    const mySnake = snakes[0];
+    const view = document.getElementById("viewport");
+    canvas.style.left = (view.offsetWidth/2 - mySnake.body[0].x) + "px";
+    canvas.style.top = (view.offsetHeight/2 - mySnake.body[0].y) + "px";
 }
 </script>
 </body>
