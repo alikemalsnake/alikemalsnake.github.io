@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Gerçek 1 Puan Modu</title>
+<title>Ali Kemal Snake.io - Adaletli Savaş</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   body { background: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; touch-action: none; }
@@ -58,7 +58,7 @@ canvas.width = WORLD_SIZE; canvas.height = WORLD_SIZE;
 let snakes = [], particles = [], gameActive = false, isBoosting = false, turnDir = 0;
 let diffSetting = { botSpeed: 4, botIntel: 0.05, botAggro: 0.1 };
 
-const botNames = ["Kerem", "Efe", "Zeynep", "Mert", "Selin", "Arda", "Can", "Elif", "Burak", "Aslı", "Dragon_Slayer", "ProSnake", "Master_X", "Yılan_Serdar", "Efsane_7", "Ahmet", "Deniz", "Kaan", "Melek", "Gizem", "Savaşçı", "Gölge", "Speedy", "Thunder", "King_Ali", "Brave_Heart", "NoobMaster", "Pro_Player", "Winner", "Alpha"];
+const botNames = ["Kerem", "Efe", "Zeynep", "Mert", "Selin", "Arda", "Can", "Elif", "Burak", "Aslı", "Dragon", "Pro_X", "Yılan_Ali", "Kral_1", "Savaşçı", "Fırtına", "Gölge", "Brave", "Master", "Winner"];
 
 function startGame() {
     const diff = document.getElementById("difficulty").value;
@@ -79,25 +79,22 @@ function resetGame() {
 function init() {
     snakes = []; particles = [];
     let pName = document.getElementById("nameInput").value || "Ali Kemal";
-    let p = createSnake(pName, "#00ff00", false);
-    p.x = WORLD_SIZE/2; p.y = WORLD_SIZE/2;
-    snakes.push(p);
+    snakes.push(createSnake(pName, "#00ff00", false, WORLD_SIZE/2, WORLD_SIZE/2));
     
     let usedNames = [...botNames];
     for(let i=0; i<30; i++) {
         let nameIdx = Math.floor(Math.random() * usedNames.length);
         let name = usedNames.splice(nameIdx, 1)[0] || ("Oyuncu_" + i);
-        let b = createSnake(name, `hsl(${Math.random()*360}, 85%, 55%)`, true);
-        b.x = Math.random()*WORLD_SIZE; b.y = Math.random()*WORLD_SIZE;
-        snakes.push(b);
+        snakes.push(createSnake(name, `hsl(${Math.random()*360}, 85%, 55%)`, true, Math.random()*WORLD_SIZE, Math.random()*WORLD_SIZE));
     }
     for(let i=0; i<800; i++) spawnParticle();
     requestAnimationFrame(loop);
 }
 
-function createSnake(name, color, isBot) {
+function createSnake(name, color, isBot, x, y) {
     return { 
-        name, color, isBot, alive: true, x:0, y:0, angle: Math.random()*Math.PI*2, 
+        name, color, isBot, alive: true, x, y, 
+        angle: Math.random()*Math.PI*2, 
         actualScore: 0, 
         speed: isBot ? diffSetting.botSpeed : 6, 
         segments: [] 
@@ -135,6 +132,7 @@ function update() {
     snakes.forEach(s => {
         if(!s.alive) return;
 
+        // BOT HAREKETİ
         if(s.isBot) {
             let distToPlayer = Math.hypot(s.x - player.x, s.y - player.y);
             let targetAngle;
@@ -143,7 +141,7 @@ function update() {
             } else {
                 let target = particles[0];
                 let dMin = Math.hypot(s.x-target.x, s.y-target.y);
-                particles.slice(0, 15).forEach(p => {
+                particles.slice(0, 10).forEach(p => {
                     let d = Math.hypot(s.x-p.x, s.y-p.y);
                     if(d < dMin) { dMin = d; target = p; }
                 });
@@ -165,30 +163,41 @@ function update() {
 
         s.segments.unshift({x: s.x, y: s.y});
         
-        // Boy uzunluğu formülü: Başlangıçta 5 boğum + her 1 skor için 2 boğum
-        let maxLength = (s.actualScore * 2) + 5;
+        // Boy uzunluğu: 0 skorda sadece 3 segment (küçücük)
+        let maxLength = (s.actualScore * 2) + 3;
         if(s.segments.length > maxLength) s.segments.pop();
 
+        // YEM YEME (1 YEM = 1 PUAN)
         particles.forEach((p, i) => {
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
                 particles.splice(i,1); 
-                s.actualScore += 1; // TAM OLARAK 1 PUAN
-                if(!s.isBot) {
-                    document.getElementById("scoreBox").innerText = "Puan: " + s.actualScore;
-                }
+                s.actualScore += 1;
+                if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.actualScore;
                 spawnParticle();
             }
         });
 
+        // GELİŞMİŞ ÇARPIŞMA SİSTEMİ
         snakes.forEach(other => {
-            if(!other.alive) return;
-            other.segments.slice(10).forEach(part => {
-                if(Math.hypot(s.x-part.x, s.y-part.y) < 16) s.alive = false;
+            if(!other.alive || s === other) return;
+
+            // 1. Kafa Kafaya Çarpışma
+            if(Math.hypot(s.x - other.x, s.y - other.y) < 25) {
+                s.alive = false;
+                other.alive = false;
+            }
+
+            // 2. Başkasının Kuyruğuna Çarpma
+            other.segments.slice(2).forEach(part => {
+                if(Math.hypot(s.x - part.x, s.y - part.y) < 18) {
+                    s.alive = false;
+                }
             });
         });
 
+        // ÖLÜM ANINDA YEME DÖNÜŞME
         if(!s.alive) {
-            s.segments.forEach((p, i) => { if(i%3===0) spawnParticle(p.x,p.y); });
+            s.segments.forEach((p, i) => { if(i%2===0) spawnParticle(p.x, p.y); });
             if(!s.isBot) {
                 gameActive = false;
                 document.getElementById("finalScore").innerText = "Skorun: " + s.actualScore;
@@ -201,6 +210,7 @@ function update() {
 function draw() {
     ctx.fillStyle = "#050505"; ctx.fillRect(0,0,WORLD_SIZE,WORLD_SIZE);
     
+    // Izgara Çizimi
     ctx.strokeStyle = "#1a1a1a";
     for(let i=0; i<WORLD_SIZE; i+=100) {
         ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,WORLD_SIZE); ctx.stroke();
@@ -217,7 +227,7 @@ function draw() {
         ctx.fillStyle = s.color;
         s.segments.forEach((p, i) => {
             ctx.beginPath(); 
-            let r = i===0 ? 16 : 13-(i*0.05>7?7:i*0.05);
+            let r = i===0 ? 16 : 13;
             ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill();
             if(i===0) { 
                 ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(p.x,p.y,5.5,0,Math.PI*2); ctx.fill(); 
