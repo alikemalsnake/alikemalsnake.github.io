@@ -2,19 +2,25 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Süper Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ali Kemal Snake.io - Mobil Destekli</title>
 <style>
-  body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
+  body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   canvas { display: block; background: #080808; }
-  #ui { position: fixed; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
-  #scoreBox { font-size: 35px; color: #00ff00; font-weight: bold; }
-  #godTag { display: none; color: white; background: red; padding: 10px 20px; border-radius: 10px; margin-top: 10px; font-weight: bold; border: 3px solid white; box-shadow: 0 0 20px red; }
-  #leaderboard { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.85); padding: 15px; border: 3px solid #ffd700; border-radius: 15px; min-width: 200px; }
-  .row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; font-size: 16px; }
-  #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: #1a1a1a; padding: 40px; border-radius: 30px; text-align: center; border: 6px solid #ffd700; min-width: 350px; }
-  input { font-size: 20px; padding: 12px; border-radius: 10px; margin: 10px; text-align: center; width: 80%; background: #000; color: #fff; border: 2px solid #444; }
-  select { font-size: 18px; padding: 10px; border-radius: 10px; width: 85%; background: #333; color: white; border: 2px solid #ffd700; }
-  button { font-size: 25px; padding: 15px 50px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 15px; font-weight: bold; margin-top: 15px; }
+  #ui { position: fixed; top: 10px; left: 10px; z-index: 100; pointer-events: none; }
+  #scoreBox { font-size: 25px; color: #00ff00; font-weight: bold; }
+  #godTag { display: none; color: white; background: red; padding: 5px 15px; border-radius: 8px; margin-top: 5px; font-weight: bold; border: 2px solid white; font-size: 14px; }
+  #leaderboard { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; border: 2px solid #ffd700; border-radius: 10px; min-width: 150px; font-size: 12px; }
+  #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: #1a1a1a; padding: 25px; border-radius: 20px; text-align: center; border: 4px solid #ffd700; width: 85%; max-width: 350px; }
+  input { font-size: 18px; padding: 10px; border-radius: 8px; margin: 10px; text-align: center; width: 80%; background: #000; color: #fff; border: 1px solid #444; }
+  select { font-size: 16px; padding: 8px; border-radius: 8px; width: 85%; background: #333; color: white; border: 2px solid #ffd700; }
+  button#startBtn { font-size: 22px; padding: 12px 40px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 12px; font-weight: bold; margin-top: 15px; }
+  
+  /* MOBİL TUŞ TAKIMI */
+  #controls { position: fixed; bottom: 30px; left: 0; right: 0; display: flex; justify-content: space-around; align-items: center; z-index: 150; padding: 0 20px; }
+  .btn { width: 80px; height: 80px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 40px; user-select: none; -webkit-tap-highlight-color: transparent; border: 2px solid rgba(255,255,255,0.4); }
+  .btn:active { background: rgba(255, 255, 255, 0.5); }
+  #mobileG { width: 60px; height: 60px; background: rgba(255, 0, 0, 0.3); font-size: 25px; border-color: red; display: none; }
 </style>
 </head>
 <body>
@@ -25,21 +31,25 @@
 </div>
 
 <div id="leaderboard">
-    <h3 style="margin:0 0 10px 0; color:#ffd700; text-align:center;">LİDERLER</h3>
     <div id="leaderRows"></div>
 </div>
 
 <div id="menu">
-  <h1 style="color:#ffd700; margin:0;">SNAKE.IO</h1>
+  <h1 style="color:#ffd700; margin:0 0 10px 0;">SNAKE.IO</h1>
   <input type="text" id="nameInput" placeholder="İsmin..." maxlength="15">
-  <div style="margin:15px 0;">
-    <select id="difficulty">
-      <option value="4.5">KOLAY</option>
-      <option value="9.5">ZOR (Stratejik)</option>
-      <option value="13.5">🔥🔥 İMKANSIZ 🔥🔥</option>
-    </select>
-  </div>
-  <button onclick="startGame()">BAŞLAT</button>
+  <select id="difficulty">
+    <option value="4.5">KOLAY</option>
+    <option value="9.5">ZOR (Stratejik)</option>
+    <option value="13.5">🔥🔥 İMKANSIZ 🔥🔥</option>
+  </select>
+  <br>
+  <button id="startBtn" onclick="startGame()">BAŞLAT</button>
+</div>
+
+<div id="controls">
+    <div class="btn" id="leftBtn">◀</div>
+    <div class="btn" id="mobileG">G</div>
+    <div class="btn" id="rightBtn">▶</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -101,10 +111,12 @@ function startGame() {
     if(rawName === "Ali Kemal") { 
         isAdmin = true; 
         rawName = "Ali Kemal [Admin]"; 
+        document.getElementById("mobileG").style.display = "flex";
     } else {
         isAdmin = false;
         godMode = false;
         document.getElementById("godTag").style.display = "none";
+        document.getElementById("mobileG").style.display = "none";
     }
     
     document.getElementById("menu").style.display = "none";
@@ -132,16 +144,27 @@ function spawnParticle() {
     });
 }
 
+function toggleGodMode() {
+    if(!isAdmin) return;
+    godMode = !godMode;
+    document.getElementById("godTag").style.display = godMode ? "block" : "none";
+}
+
+// KLAVYE
 window.addEventListener('keydown', (e) => {
     let k = e.key.toLowerCase();
     if(k === "arrowleft") turnDir = -0.12;
     if(k === "arrowright") turnDir = 0.12;
-    if(k === "g" && isAdmin) {
-        godMode = !godMode;
-        document.getElementById("godTag").style.display = godMode ? "block" : "none";
-    }
+    if(k === "g") toggleGodMode();
 });
 window.addEventListener('keyup', () => turnDir = 0);
+
+// MOBİL DOKUNMATİK
+document.getElementById("leftBtn").ontouchstart = (e) => { e.preventDefault(); turnDir = -0.12; };
+document.getElementById("leftBtn").ontouchend = () => turnDir = 0;
+document.getElementById("rightBtn").ontouchstart = (e) => { e.preventDefault(); turnDir = 0.12; };
+document.getElementById("rightBtn").ontouchend = () => turnDir = 0;
+document.getElementById("mobileG").ontouchstart = (e) => { e.preventDefault(); toggleGodMode(); };
 
 function loop() {
     if(!gameActive) return;
@@ -196,10 +219,8 @@ function update() {
         s.x += Math.cos(s.angle) * currentSpeed;
         s.y += Math.sin(s.angle) * currentSpeed;
 
-        // DUVAR KONTROLÜ
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
             if(!s.isBot && godMode) {
-                // Ölümsüzken duvardan geri sek
                 if(s.x < 0) s.x = 0; if(s.x > WORLD_SIZE) s.x = WORLD_SIZE;
                 if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
             } else {
@@ -211,7 +232,6 @@ function update() {
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 15) s.segments.pop();
 
-        // YEM YEME
         for(let j = particles.length - 1; j >= 0; j--) {
             let p = particles[j];
             if(Math.hypot(s.x-p.x, s.y-p.y) < 28) {
@@ -222,19 +242,14 @@ function update() {
             }
         }
 
-        // ÇARPIŞMA KONTROLÜ (SÜPER ADMIN FIX)
         snakes.forEach(other => {
             if(!other.alive || s === other) return;
-            
-            // Diğer yılanın tüm parçalarını kontrol et
             other.segments.forEach((p, idx) => {
                 if(Math.hypot(s.x - p.x, s.y - p.y) < 18) {
                     if(!s.isBot && godMode) {
-                        // SEN ÖLÜMSÜZSEN DİĞERİ PATLAR!
                         other.alive = false;
                         dropLoot(other);
                     } else {
-                        // Ölümsüz değilsen sen ölürsün
                         s.alive = false;
                         if(!s.isBot) { gameActive = false; dropLoot(s); setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); }
                     }
@@ -257,12 +272,9 @@ function draw() {
     ctx.fillStyle = "#080808"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save(); ctx.translate(-camera.x, -camera.y);
     ctx.strokeStyle = "red"; ctx.lineWidth = 20; ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
-
     particles.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
     });
-
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
