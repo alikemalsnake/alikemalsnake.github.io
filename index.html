@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Adaletli Savaş</title>
+<title>Ali Kemal Snake.io - Skor Tablosu</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   body { background: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; touch-action: none; }
@@ -12,8 +12,14 @@
   .active { display: block; }
   select, input { font-size: 18px; padding: 12px; border-radius: 10px; margin: 10px; width: 85%; background: #111; color: white; border: 2px solid #444; }
   button { font-size: 22px; padding: 15px 40px; border-radius: 12px; background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 15px; }
+  
+  /* SKOR TABLOSU STİLİ */
   #ui { position: fixed; top: 20px; left: 20px; z-index: 50; pointer-events: none; }
   #scoreBox { font-size: 32px; color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+  #leaderboard { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; border: 1px solid #444; min-width: 150px; z-index: 50; }
+  #leaderboard h3 { margin: 0 0 10px 0; color: #ffff00; font-size: 18px; text-align: center; }
+  .leader-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; border-bottom: 1px solid #333; }
+
   .controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: none; grid-template-columns: repeat(3, 1fr); gap: 20px; z-index: 150; }
   @media (max-width: 768px) { .controls { display: grid; } }
   .btn-dir { width: 75px; height: 75px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: white; border: 2px solid #555; }
@@ -22,6 +28,11 @@
 <body>
 
 <div id="ui"><div id="scoreBox">Puan: 0</div></div>
+
+<div id="leaderboard">
+    <h3>Liderler</h3>
+    <div id="leaderRows"></div>
+</div>
 
 <div id="menu" class="screen active">
   <h1 style="color:#00ff00; font-size: 35px;">SNAKE.IO</h1>
@@ -124,7 +135,18 @@ function loop() {
     if(!gameActive) return;
     update();
     draw();
+    updateLeaderboard();
     requestAnimationFrame(loop);
+}
+
+function updateLeaderboard() {
+    const sorted = [...snakes].filter(s => s.alive).sort((a,b) => b.actualScore - a.actualScore).slice(0, 6);
+    let html = "";
+    sorted.forEach((s, i) => {
+        const color = s.isBot ? "white" : "#00ff00";
+        html += `<div class="leader-row" style="color:${color}"><span>${i+1}. ${s.name}</span><span>${s.actualScore}</span></div>`;
+    });
+    document.getElementById("leaderRows").innerHTML = html;
 }
 
 function update() {
@@ -132,7 +154,6 @@ function update() {
     snakes.forEach(s => {
         if(!s.alive) return;
 
-        // BOT HAREKETİ
         if(s.isBot) {
             let distToPlayer = Math.hypot(s.x - player.x, s.y - player.y);
             let targetAngle;
@@ -162,12 +183,9 @@ function update() {
         if(s.x<0 || s.x>WORLD_SIZE || s.y<0 || s.y>WORLD_SIZE) s.alive = false;
 
         s.segments.unshift({x: s.x, y: s.y});
-        
-        // Boy uzunluğu: 0 skorda sadece 3 segment (küçücük)
         let maxLength = (s.actualScore * 2) + 3;
         if(s.segments.length > maxLength) s.segments.pop();
 
-        // YEM YEME (1 YEM = 1 PUAN)
         particles.forEach((p, i) => {
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
                 particles.splice(i,1); 
@@ -177,17 +195,11 @@ function update() {
             }
         });
 
-        // GELİŞMİŞ ÇARPIŞMA SİSTEMİ
         snakes.forEach(other => {
             if(!other.alive || s === other) return;
-
-            // 1. Kafa Kafaya Çarpışma
             if(Math.hypot(s.x - other.x, s.y - other.y) < 25) {
-                s.alive = false;
-                other.alive = false;
+                s.alive = false; other.alive = false;
             }
-
-            // 2. Başkasının Kuyruğuna Çarpma
             other.segments.slice(2).forEach(part => {
                 if(Math.hypot(s.x - part.x, s.y - part.y) < 18) {
                     s.alive = false;
@@ -195,7 +207,6 @@ function update() {
             });
         });
 
-        // ÖLÜM ANINDA YEME DÖNÜŞME
         if(!s.alive) {
             s.segments.forEach((p, i) => { if(i%2===0) spawnParticle(p.x, p.y); });
             if(!s.isBot) {
@@ -209,19 +220,15 @@ function update() {
 
 function draw() {
     ctx.fillStyle = "#050505"; ctx.fillRect(0,0,WORLD_SIZE,WORLD_SIZE);
-    
-    // Izgara Çizimi
     ctx.strokeStyle = "#1a1a1a";
     for(let i=0; i<WORLD_SIZE; i+=100) {
         ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,WORLD_SIZE); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(WORLD_SIZE,i); ctx.stroke();
     }
-
     particles.forEach(p => {
         ctx.fillStyle = p.color;
         ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
     });
-
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
@@ -237,7 +244,6 @@ function draw() {
         });
         ctx.fillStyle = "white"; ctx.font = "bold 16px Arial"; ctx.fillText(s.name, s.x-20, s.y-30);
     });
-
     const myS = snakes[0];
     const v = document.getElementById("viewport");
     if(myS) {
