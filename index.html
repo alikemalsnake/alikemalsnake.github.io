@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Kesintisiz Oyun</title>
+<title>Ali Kemal Snake.io - Süper Admin</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
   canvas { display: block; background: #080808; }
@@ -84,7 +84,7 @@ function createBot() {
 
 function dropLoot(snake) {
     for(let i = 0; i < snake.segments.length; i += 2) {
-        let seg = snake.segments[i];
+        let seg = snake.segments[i] || {x: snake.x, y: snake.y};
         particles.push({
             x: seg.x + (Math.random()-0.5)*30,
             y: seg.y + (Math.random()-0.5)*30,
@@ -156,26 +156,22 @@ function update() {
     for(let i = 0; i < snakes.length; i++) {
         let s = snakes[i];
         if(!s.alive) {
-            if(s.isBot) { 
-                dropLoot(s); 
-                snakes[i] = createBot(); 
-            }
+            if(s.isBot) { dropLoot(s); snakes[i] = createBot(); }
             continue;
         }
         
         if (s.isBot) {
             let target = player; 
             let dist = target ? Math.hypot(target.x - s.x, target.y - s.y) : 9999;
-            
-            if (dist < 400 && Math.random() < 0.05) s.state = "attack";
-            else if (dist > 1000) s.state = "roam";
+            if (dist < 500 && Math.random() < 0.05) s.state = "attack";
+            else if (dist > 1200) s.state = "roam";
 
             let danger = false;
             snakes.forEach(other => {
                 if (s === other) return;
                 other.segments.forEach((seg, idx) => {
-                    if (idx % 3 === 0 && Math.hypot(s.x - seg.x, s.y - seg.y) < 60) {
-                        s.angle += 0.4;
+                    if (idx % 4 === 0 && Math.hypot(s.x - seg.x, s.y - seg.y) < 70) {
+                        s.angle += 0.5;
                         danger = true;
                     }
                 });
@@ -183,13 +179,11 @@ function update() {
 
             if (!danger) {
                 if (s.state === "attack" && target) {
-                    let leadX = target.x + Math.cos(target.angle) * 100;
-                    let leadY = target.y + Math.sin(target.angle) * 100;
-                    let targetAngle = Math.atan2(leadY - s.y, leadX - s.x);
+                    let targetAngle = Math.atan2(target.y - s.y, target.x - s.x);
                     let diff = targetAngle - s.angle;
                     while (diff < -Math.PI) diff += Math.PI * 2;
                     while (diff > Math.PI) diff -= Math.PI * 2;
-                    s.angle += diff * 0.15;
+                    s.angle += diff * 0.12;
                 } else {
                     s.angle += (Math.random() - 0.5) * 0.2;
                 }
@@ -204,16 +198,13 @@ function update() {
 
         // DUVAR KONTROLÜ
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
-            if(s.isBot || !godMode) {
-                s.alive = false;
-                if(!s.isBot) { 
-                    gameActive = false; 
-                    dropLoot(s); 
-                    setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); 
-                }
-            } else {
+            if(!s.isBot && godMode) {
+                // Ölümsüzken duvardan geri sek
                 if(s.x < 0) s.x = 0; if(s.x > WORLD_SIZE) s.x = WORLD_SIZE;
                 if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
+            } else {
+                s.alive = false;
+                if(!s.isBot) { gameActive = false; dropLoot(s); setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); }
             }
         }
 
@@ -223,7 +214,7 @@ function update() {
         // YEM YEME
         for(let j = particles.length - 1; j >= 0; j--) {
             let p = particles[j];
-            if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
+            if(Math.hypot(s.x-p.x, s.y-p.y) < 28) {
                 particles.splice(j, 1);
                 s.score++;
                 if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.score;
@@ -231,32 +222,21 @@ function update() {
             }
         }
 
-        // ÇARPIŞMA KONTROLÜ
+        // ÇARPIŞMA KONTROLÜ (SÜPER ADMIN FIX)
         snakes.forEach(other => {
-            if(!other.alive) return;
-            if (s !== other && Math.hypot(s.x - other.x, s.y - other.y) < 25) {
-                if (!s.isBot && godMode) {
-                    other.alive = false;
-                } else {
-                    s.alive = false;
-                    other.alive = false;
-                    if(!s.isBot) { 
-                        gameActive = false; 
-                        setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); 
-                    }
-                }
-                return;
-            }
+            if(!other.alive || s === other) return;
+            
+            // Diğer yılanın tüm parçalarını kontrol et
             other.segments.forEach((p, idx) => {
-                if (s === other && idx < 10) return; 
-                if(Math.hypot(s.x - p.x, s.y - p.y) < 16) {
-                    if(s.isBot || !godMode) {
+                if(Math.hypot(s.x - p.x, s.y - p.y) < 18) {
+                    if(!s.isBot && godMode) {
+                        // SEN ÖLÜMSÜZSEN DİĞERİ PATLAR!
+                        other.alive = false;
+                        dropLoot(other);
+                    } else {
+                        // Ölümsüz değilsen sen ölürsün
                         s.alive = false;
-                        if(!s.isBot) { 
-                            gameActive = false; 
-                            dropLoot(s); 
-                            setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); 
-                        }
+                        if(!s.isBot) { gameActive = false; dropLoot(s); setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); }
                     }
                 }
             });
@@ -286,7 +266,7 @@ function draw() {
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
-        if(!s.isBot && godMode) { ctx.shadowBlur = 20; ctx.shadowColor = "white"; }
+        if(!s.isBot && godMode) { ctx.shadowBlur = 25; ctx.shadowColor = "white"; }
         s.segments.forEach((seg, i) => {
             ctx.beginPath(); ctx.arc(seg.x, seg.y, i === 0 ? 18 : 14, 0, Math.PI*2); ctx.fill();
         });
