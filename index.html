@@ -2,12 +2,13 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Savaşçı Botlar</title>
+<title>Ali Kemal Snake.io - Ölümsüzlük Aktif</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
   canvas { display: block; background: #080808; }
   #ui { position: fixed; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
   #scoreBox { font-size: 35px; color: #00ff00; font-weight: bold; }
+  /* ÖLÜMSÜZLÜK YAZISI */
   #godTag { display: none; color: white; background: red; padding: 10px 20px; border-radius: 10px; margin-top: 10px; font-weight: bold; border: 3px solid white; box-shadow: 0 0 20px red; }
   #leaderboard { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.85); padding: 15px; border: 3px solid #ffd700; border-radius: 15px; min-width: 200px; }
   .row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; font-size: 16px; }
@@ -34,9 +35,9 @@
   <input type="text" id="nameInput" placeholder="İsmin..." maxlength="15">
   <div style="margin:15px 0;">
     <select id="difficulty">
-      <option value="4.5">KOLAY (Sakin Botlar)</option>
-      <option value="6.5" selected>ORTA (Avcı Botlar)</option>
-      <option value="9.5">ZOR (Çılgın Botlar!)</option>
+      <option value="4.5">KOLAY</option>
+      <option value="6.5" selected>ORTA</option>
+      <option value="9.5">ZOR</option>
     </select>
   </div>
   <button onclick="startGame()">BAŞLAT</button>
@@ -77,8 +78,7 @@ function createBot() {
         score: Math.floor(Math.random()*15)+5, 
         segments: [], 
         alive: true, 
-        isBot: true,
-        targetUpdateTimer: 0
+        isBot: true
     };
 }
 
@@ -95,12 +95,20 @@ function dropLoot(snake) {
 }
 
 function startGame() {
-    let name = document.getElementById("nameInput").value.trim();
+    let nameInput = document.getElementById("nameInput").value.trim();
     currentSpeed = parseFloat(document.getElementById("difficulty").value);
-    if(name === "Ali Kemal") { isAdmin = true; name = "Ali Kemal [Admin]"; }
+    
+    // BURASI ÖNEMLİ: İsmin Ali Kemal ise Admin yetkisi alırsın
+    if(nameInput === "Ali Kemal") { 
+        isAdmin = true; 
+        nameInput = "Ali Kemal [Admin]"; 
+    } else {
+        isAdmin = false;
+    }
+    
     document.getElementById("menu").style.display = "none";
     gameActive = true;
-    init(name || "Oyuncu");
+    init(nameInput || "Oyuncu");
 }
 
 function init(pName) {
@@ -123,10 +131,13 @@ function spawnParticle() {
     });
 }
 
+// TUŞ KONTROLLERİ (Ölümsüzlük Tuşu Burası)
 window.onkeydown = (e) => {
     let k = e.key.toLowerCase();
     if(k === "arrowleft") turnDir = -0.11;
     if(k === "arrowright") turnDir = 0.11;
+    
+    // G tuşuna basınca admin isen ölümsüzlüğü aç/kapat
     if(k === "g" && isAdmin) {
         godMode = !godMode;
         document.getElementById("godTag").style.display = godMode ? "block" : "none";
@@ -152,25 +163,18 @@ function update() {
         }
         
         if (s.isBot) {
-            // BOT AI: SALDIRI VE TAKİP
             let distToPlayer = player ? Math.hypot(player.x - s.x, player.y - s.y) : 9999;
-            
-            // Zorluğa göre algılama mesafesi (Zorda her yerden saldırır)
             let detectionRange = currentSpeed > 8 ? 1500 : (currentSpeed > 5 ? 800 : 400);
 
             if (player && distToPlayer < detectionRange) {
-                // Oyuncuya doğru yönel
                 let targetAngle = Math.atan2(player.y - s.y, player.x - s.x);
                 let diff = targetAngle - s.angle;
                 while (diff < -Math.PI) diff += Math.PI * 2;
                 while (diff > Math.PI) diff -= Math.PI * 2;
-                s.angle += diff * 0.08; // Botların dönüş hızı
+                s.angle += diff * 0.08;
             } else {
-                // Rastgele gez ve yemleri topla
                 s.angle += (Math.random() - 0.5) * 0.2;
             }
-
-            // Duvarlardan kaçınma zekası
             if (s.x < 150 || s.x > WORLD_SIZE - 150 || s.y < 150 || s.y > WORLD_SIZE - 150) {
                 s.angle += 0.2;
             }
@@ -181,12 +185,13 @@ function update() {
         s.x += Math.cos(s.angle) * currentSpeed;
         s.y += Math.sin(s.angle) * currentSpeed;
 
-        // Ölüm Kontrolleri
+        // ÖLÜMSÜZLÜK KONTROLÜ (DUVARLAR)
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
             if(s.isBot || !godMode) {
                 s.alive = false;
                 if(!s.isBot) { dropLoot(s); setTimeout(() => location.reload(), 800); }
             } else {
+                // Duvara çarpınca ölme, geri dön
                 if(s.x < 0) s.x = 0; if(s.x > WORLD_SIZE) s.x = WORLD_SIZE;
                 if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
             }
@@ -195,7 +200,6 @@ function update() {
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 15) s.segments.pop();
 
-        // Yem yeme
         for(let j = particles.length - 1; j >= 0; j--) {
             let p = particles[j];
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
@@ -206,7 +210,7 @@ function update() {
             }
         }
 
-        // Çarpışma: Kafayı diğer yılanların gövdesine vurma
+        // ÖLÜMSÜZLÜK KONTROLÜ (ÇARPIŞMALAR)
         snakes.forEach(other => {
             if(s === other || !other.alive) return;
             other.segments.forEach((p, idx) => {
@@ -243,7 +247,13 @@ function draw() {
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
-        if(!s.isBot && godMode) { ctx.shadowBlur = 20; ctx.shadowColor = "white"; }
+        
+        // Ölümsüzken parlama efekti
+        if(!s.isBot && godMode) { 
+            ctx.shadowBlur = 25; 
+            ctx.shadowColor = "white"; 
+        }
+
         s.segments.forEach((seg, i) => {
             ctx.beginPath(); ctx.arc(seg.x, seg.y, i === 0 ? 18 : 14, 0, Math.PI*2); ctx.fill();
         });
