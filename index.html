@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ali Kemal Snake.io - Gerçekçi Botlar</title>
+<title>Ali Kemal Snake.io - Özgür Botlar</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   canvas { display: block; background: #080808; }
@@ -74,8 +74,8 @@ function createBot() {
         angle: Math.random()*Math.PI*2, 
         score: Math.floor(Math.random()*25)+10, 
         segments: [], alive: true, isBot: true,
-        personality: Math.random(), // 0-0.4 Yemci, 0.4-0.8 Avcı, 0.8-1.0 Karışık
-        targetType: "roam"
+        aiTimer: 0, // Hedef değiştirmek için zamanlayıcı
+        currentAction: "roam"
     };
 }
 
@@ -142,45 +142,51 @@ function update() {
         if(!s.alive) { if(s.isBot) { dropLoot(s); snakes[i] = createBot(); } continue; }
         
         if (s.isBot) {
-            let targetAngle = s.angle;
-            let foundTarget = false;
+            s.aiTimer--;
+            if(s.aiTimer <= 0) {
+                // RASTGELE HAREKET KARARI
+                let rand = Math.random();
+                if(rand < 0.6) s.currentAction = "eat"; // Yem topla
+                else if(rand < 0.9) s.currentAction = "fight"; // Diğer botlarla kapış
+                else s.currentAction = "roam"; // Öylesine gez
+                s.aiTimer = 100 + Math.random() * 200;
+            }
 
-            // 1. TEHLİKE KONTROLÜ (Önceliği En Yüksek)
+            let targetAngle = s.angle;
+            let danger = false;
+
+            // 1. ÇARPIŞMA ÖNLEYİCİ (HER ŞEYDEN ÖNCE)
             snakes.forEach(other => {
-                if (s === other) return;
                 other.segments.forEach((seg, idx) => {
-                    if (idx % 5 === 0 && Math.hypot(s.x - seg.x, s.y - seg.y) < 80) {
-                        targetAngle += 0.6; // Kaç
-                        foundTarget = true;
+                    if (idx % 6 === 0 && Math.hypot(s.x - seg.x, s.y - seg.y) < 70) {
+                        targetAngle += 0.7; // Kaçış manevrası
+                        danger = true;
                     }
                 });
             });
 
-            // 2. STRATEJİK HEDEF SEÇİMİ
-            if (!foundTarget) {
-                if (s.personality < 0.4) { // YEMCİ BOT
-                    let closestP = particles[0];
-                    let minDist = Math.hypot(s.x - closestP.x, s.y - closestP.y);
-                    for(let j=1; j<20; j++) { // Sadece yakındaki 20 yeme bak (Performans için)
-                        let p = particles[j];
-                        let d = Math.hypot(s.x-p.x, s.y-p.y);
-                        if(d < minDist) { minDist = d; closestP = p; }
-                    }
-                    targetAngle = Math.atan2(closestP.y - s.y, closestP.x - s.x);
-                } else { // AVCI BOT
-                    // Rastgele bir yılan seç (Sen veya başka bot)
-                    let otherSnakes = snakes.filter(os => os !== s && os.alive);
-                    let targetSnake = otherSnakes[Math.floor(Math.random() * otherSnakes.length)];
-                    if(targetSnake) {
-                        targetAngle = Math.atan2(targetSnake.y - s.y, targetSnake.x - s.x);
-                    }
+            if (!danger) {
+                if (s.currentAction === "eat") {
+                    let p = particles[i % particles.length]; // Her bot farklı yeme baksın
+                    targetAngle = Math.atan2(p.y - s.y, p.x - s.x);
+                } else if (s.currentAction === "fight") {
+                    // Sadece oyuncuya değil, en yakınındaki HERHANGİ birine git
+                    let nearest = null, minDist = 1000;
+                    snakes.forEach(os => {
+                        if(os === s || !os.alive) return;
+                        let d = Math.hypot(s.x - os.x, s.y - os.y);
+                        if(d < minDist) { minDist = d; nearest = os; }
+                    });
+                    if(nearest) targetAngle = Math.atan2(nearest.y - s.y, nearest.x - s.x);
+                } else {
+                    targetAngle += (Math.random() - 0.5) * 0.1;
                 }
-                
-                let diff = targetAngle - s.angle;
-                while (diff < -Math.PI) diff += Math.PI * 2;
-                while (diff > Math.PI) diff -= Math.PI * 2;
-                s.angle += diff * 0.1;
             }
+
+            let diff = targetAngle - s.angle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            s.angle += diff * 0.08;
 
             if (s.x < 100 || s.x > WORLD_SIZE - 100 || s.y < 100 || s.y > WORLD_SIZE - 100) s.angle += 0.3;
         } else {
