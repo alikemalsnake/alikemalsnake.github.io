@@ -2,12 +2,12 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Duvarlı Sürüm</title>
+<title>Ali Kemal Snake.io - Renkli Dünya</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
   canvas { background: #050505; display: block; }
   #ui { position: fixed; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
-  #scoreBox { font-size: 32px; color: #00ff00; font-weight: bold; }
+  #scoreBox { font-size: 32px; color: #00ff00; font-weight: bold; text-shadow: 0 0 10px #000; }
   #godTag { display: none; color: white; background: red; padding: 8px 15px; border-radius: 8px; margin-top: 10px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 15px red; }
   #leaderboard { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 15px; border: 2px solid #ffd700; border-radius: 12px; min-width: 180px; }
   .row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
@@ -29,7 +29,7 @@
 
 <div id="menu">
   <h1 style="color:#ffd700; margin-top:0;">SNAKE.IO</h1>
-  <p style="color:#888;">İsmini yaz:</p>
+  <p style="color:#888;">İsmini yaz ve oyuna başla:</p>
   <input type="text" id="nameInput" value="" maxlength="15">
   <br>
   <button onclick="startGame()">BAŞLAT</button>
@@ -40,7 +40,7 @@
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const WORLD_SIZE = 3000; // Harita büyüklüğü
+const WORLD_SIZE = 3000;
 
 let snakes = [], particles = [], gameActive = false, turnDir = 0, godMode = false, isAdmin = false;
 let camera = { x: 0, y: 0 };
@@ -52,6 +52,11 @@ function resize() {
 window.onresize = resize;
 resize();
 
+// Rastgele Renk Oluşturucu
+function getRandomColor() {
+    return `hsl(${Math.random() * 360}, 100%, 50%)`;
+}
+
 function startGame() {
     let name = document.getElementById("nameInput").value.trim();
     if(name === "Ali Kemal") {
@@ -60,10 +65,9 @@ function startGame() {
     } else {
         isAdmin = false;
     }
-    // OYUN BAŞINDA ÖLÜMSÜZLÜK KAPALI!
-    godMode = false;
-    document.getElementById("godTag").style.display = "none";
     
+    godMode = false; // Başlangıçta ölümsüzlük hep kapalı
+    document.getElementById("godTag").style.display = "none";
     document.getElementById("menu").style.display = "none";
     gameActive = true;
     init(name || "Oyuncu");
@@ -71,26 +75,40 @@ function startGame() {
 
 function init(pName) {
     snakes = []; particles = [];
+    // Senin yılanın
     snakes.push({
-        name: pName, color: isAdmin ? "#00ff00" : "#00aaff",
+        name: pName, color: isAdmin ? "#00ff00" : getRandomColor(),
         x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, score: 0, segments: [], alive: true, isBot: false
     });
-    for(let i=0; i<15; i++) {
+
+    // Renkli Botlar
+    for(let i=0; i<18; i++) {
         snakes.push({
-            name: "Bot_"+i, color: "red", x: Math.random()*(WORLD_SIZE-100)+50, y: Math.random()*(WORLD_SIZE-100)+50,
-            angle: Math.random()*6, score: 5, segments: [], alive: true, isBot: true
+            name: "Bot_"+i, color: getRandomColor(), 
+            x: Math.random()*(WORLD_SIZE-200)+100, y: Math.random()*(WORLD_SIZE-200)+100,
+            angle: Math.random()*Math.PI*2, score: 5, segments: [], alive: true, isBot: true
         });
     }
-    for(let i=0; i<400; i++) particles.push({x: Math.random()*(WORLD_SIZE-40)+20, y: Math.random()*(WORLD_SIZE-40)+20});
+
+    // Gökkuşağı Yemler
+    for(let i=0; i<400; i++) spawnParticle();
     requestAnimationFrame(loop);
+}
+
+function spawnParticle() {
+    particles.push({
+        x: Math.random()*(WORLD_SIZE-60)+30, 
+        y: Math.random()*(WORLD_SIZE-60)+30, 
+        color: getRandomColor() 
+    });
 }
 
 window.onkeydown = (e) => {
     let k = e.key.toLowerCase();
-    if(k === "arrowleft") turnDir = -0.09;
-    if(k === "arrowright") turnDir = 0.09;
+    if(k === "arrowleft" || k === "a") turnDir = -0.09;
+    if(k === "arrowright" || k === "d") turnDir = 0.09;
     
-    // G tuşu sadece Admin için çalışır ve ölümsüzlüğü açar/kapatır
+    // G Tuşu Kontrolü
     if(k === "g" && isAdmin) {
         godMode = !godMode;
         document.getElementById("godTag").style.display = godMode ? "block" : "none";
@@ -108,17 +126,16 @@ function loop() {
 function update() {
     snakes.forEach(s => {
         if(!s.alive) return;
-        s.angle += s.isBot ? (Math.random()-0.5)*0.2 : turnDir;
-        s.x += Math.cos(s.angle) * 5.5;
-        s.y += Math.sin(s.angle) * 5.5;
+        s.angle += s.isBot ? (Math.random()-0.5)*0.25 : turnDir;
+        s.x += Math.cos(s.angle) * 5.8;
+        s.y += Math.sin(s.angle) * 5.8;
 
-        // DUVARA ÇARPMA KONTROLÜ
+        // Duvar Kontrolü
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
             if(s.isBot || !godMode) {
                 s.alive = false;
                 if(!s.isBot) setTimeout(() => location.reload(), 1000);
             } else {
-                // Admin ölümsüzse duvarda sekme yapabilir
                 if(s.x < 0) s.x = 0; if(s.x > WORLD_SIZE) s.x = WORLD_SIZE;
                 if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
             }
@@ -127,20 +144,21 @@ function update() {
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 10) s.segments.pop();
 
+        // Yem Yeme
         particles.forEach((p, i) => {
-            if(Math.hypot(s.x-p.x, s.y-p.y) < 20) {
+            if(Math.hypot(s.x-p.x, s.y-p.y) < 22) {
                 particles.splice(i, 1);
                 s.score++;
                 if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.score;
-                particles.push({x: Math.random()*(WORLD_SIZE-40)+20, y: Math.random()*(WORLD_SIZE-40)+20});
+                spawnParticle();
             }
         });
 
-        // DİĞER YILANLARA ÇARPMA
+        // Çarpışma
         snakes.forEach(other => {
             if(s === other || !other.alive) return;
             other.segments.forEach((p, idx) => {
-                if(idx > 3 && Math.hypot(s.x - p.x, s.y - p.y) < 12) {
+                if(idx > 3 && Math.hypot(s.x - p.x, s.y - p.y) < 13) {
                     if(s.isBot || !godMode) {
                         s.alive = false;
                         if(!s.isBot) setTimeout(() => location.reload(), 1000);
@@ -168,28 +186,39 @@ function draw() {
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
 
-    // KIRMIZI DUVARLAR (SINIRLAR)
+    // Kırmızı Sınırlar
     ctx.strokeStyle = "red";
-    ctx.lineWidth = 10;
+    ctx.lineWidth = 15;
     ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
     ctx.lineWidth = 1;
 
+    // Renkli Yemler
     particles.forEach(p => {
-        ctx.fillStyle = "yellow";
-        ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, 7); ctx.fill();
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 5; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, 7); ctx.fill();
     });
+    ctx.shadowBlur = 0;
 
+    // Renkli Yılanlar
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
-        if(!s.isBot && godMode) { ctx.shadowBlur = 20; ctx.shadowColor = "red"; }
+        
+        if(!s.isBot && godMode) {
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "white";
+        }
+
         s.segments.forEach((seg, i) => {
-            ctx.beginPath(); ctx.arc(seg.x, seg.y, i === 0 ? 15 : 12, 0, 7); ctx.fill();
+            ctx.beginPath();
+            ctx.arc(seg.x, seg.y, i === 0 ? 16 : 13, 0, 7);
+            ctx.fill();
         });
         ctx.shadowBlur = 0;
         ctx.fillStyle = "white";
         ctx.font = "bold 14px Arial";
-        ctx.fillText(s.name, s.x - 20, s.y - 20);
+        ctx.fillText(s.name, s.x - 25, s.y - 25);
     });
     ctx.restore();
 }
