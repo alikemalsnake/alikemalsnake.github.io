@@ -2,43 +2,18 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io</title>
+<title>Ali Kemal Snake.io - Duvarlı Sürüm</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
   canvas { background: #050505; display: block; }
-  
-  /* ÜST PANELLER */
   #ui { position: fixed; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
   #scoreBox { font-size: 32px; color: #00ff00; font-weight: bold; }
-  #godTag { 
-    display: none; color: white; background: red; padding: 8px 15px; 
-    border-radius: 8px; margin-top: 10px; font-weight: bold; 
-    border: 2px solid white; box-shadow: 0 0 15px red; 
-  }
-
-  #leaderboard { 
-    position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); 
-    padding: 15px; border: 2px solid #ffd700; border-radius: 12px; min-width: 180px; 
-  }
+  #godTag { display: none; color: white; background: red; padding: 8px 15px; border-radius: 8px; margin-top: 10px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 15px red; }
+  #leaderboard { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 15px; border: 2px solid #ffd700; border-radius: 12px; min-width: 180px; }
   .row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
-
-  /* GİRİŞ EKRANI */
-  #menu { 
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-    z-index: 200; background: #111; padding: 40px; border-radius: 25px; 
-    text-align: center; border: 5px solid #ffd700; min-width: 300px;
-  }
-  
-  /* BOMBOŞ KUTU AYARI */
-  input { 
-    font-size: 20px; padding: 12px; border-radius: 10px; margin: 15px; 
-    text-align: center; width: 80%; background: #000; color: white; border: 2px solid #444;
-  }
-  
-  button { 
-    font-size: 22px; padding: 15px 40px; background: #28a745; color: white; 
-    border: none; cursor: pointer; border-radius: 12px; font-weight: bold; 
-  }
+  #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: #111; padding: 40px; border-radius: 25px; text-align: center; border: 5px solid #ffd700; min-width: 300px; }
+  input { font-size: 20px; padding: 12px; border-radius: 10px; margin: 15px; text-align: center; width: 80%; background: #000; color: white; border: 2px solid #444; }
+  button { font-size: 22px; padding: 15px 40px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 12px; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -65,7 +40,7 @@
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const WORLD_SIZE = 3000;
+const WORLD_SIZE = 3000; // Harita büyüklüğü
 
 let snakes = [], particles = [], gameActive = false, turnDir = 0, godMode = false, isAdmin = false;
 let camera = { x: 0, y: 0 };
@@ -79,14 +54,15 @@ resize();
 
 function startGame() {
     let name = document.getElementById("nameInput").value.trim();
-    
-    // Eğer kutuya "Ali Kemal" yazarsan Admin yetkilerin açılır
     if(name === "Ali Kemal") {
         isAdmin = true;
         name = "Ali Kemal [Admin]";
     } else {
         isAdmin = false;
     }
+    // OYUN BAŞINDA ÖLÜMSÜZLÜK KAPALI!
+    godMode = false;
+    document.getElementById("godTag").style.display = "none";
     
     document.getElementById("menu").style.display = "none";
     gameActive = true;
@@ -97,15 +73,15 @@ function init(pName) {
     snakes = []; particles = [];
     snakes.push({
         name: pName, color: isAdmin ? "#00ff00" : "#00aaff",
-        x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, score: 0, segments: [], alive: true
+        x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, score: 0, segments: [], alive: true, isBot: false
     });
     for(let i=0; i<15; i++) {
         snakes.push({
-            name: "Bot_"+i, color: "red", x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE,
+            name: "Bot_"+i, color: "red", x: Math.random()*(WORLD_SIZE-100)+50, y: Math.random()*(WORLD_SIZE-100)+50,
             angle: Math.random()*6, score: 5, segments: [], alive: true, isBot: true
         });
     }
-    for(let i=0; i<400; i++) particles.push({x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE});
+    for(let i=0; i<400; i++) particles.push({x: Math.random()*(WORLD_SIZE-40)+20, y: Math.random()*(WORLD_SIZE-40)+20});
     requestAnimationFrame(loop);
 }
 
@@ -114,7 +90,7 @@ window.onkeydown = (e) => {
     if(k === "arrowleft") turnDir = -0.09;
     if(k === "arrowright") turnDir = 0.09;
     
-    // G tuşu sadece gerçek Ali Kemal girince çalışır
+    // G tuşu sadece Admin için çalışır ve ölümsüzlüğü açar/kapatır
     if(k === "g" && isAdmin) {
         godMode = !godMode;
         document.getElementById("godTag").style.display = godMode ? "block" : "none";
@@ -133,11 +109,20 @@ function update() {
     snakes.forEach(s => {
         if(!s.alive) return;
         s.angle += s.isBot ? (Math.random()-0.5)*0.2 : turnDir;
-        s.x += Math.cos(s.angle) * 5.2;
-        s.y += Math.sin(s.angle) * 5.2;
+        s.x += Math.cos(s.angle) * 5.5;
+        s.y += Math.sin(s.angle) * 5.5;
 
-        if(s.x < 0) s.x = WORLD_SIZE; if(s.x > WORLD_SIZE) s.x = 0;
-        if(s.y < 0) s.y = WORLD_SIZE; if(s.y > WORLD_SIZE) s.y = 0;
+        // DUVARA ÇARPMA KONTROLÜ
+        if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
+            if(s.isBot || !godMode) {
+                s.alive = false;
+                if(!s.isBot) setTimeout(() => location.reload(), 1000);
+            } else {
+                // Admin ölümsüzse duvarda sekme yapabilir
+                if(s.x < 0) s.x = 0; if(s.x > WORLD_SIZE) s.x = WORLD_SIZE;
+                if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
+            }
+        }
 
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 10) s.segments.pop();
@@ -147,10 +132,11 @@ function update() {
                 particles.splice(i, 1);
                 s.score++;
                 if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.score;
-                particles.push({x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE});
+                particles.push({x: Math.random()*(WORLD_SIZE-40)+20, y: Math.random()*(WORLD_SIZE-40)+20});
             }
         });
 
+        // DİĞER YILANLARA ÇARPMA
         snakes.forEach(other => {
             if(s === other || !other.alive) return;
             other.segments.forEach((p, idx) => {
@@ -181,6 +167,12 @@ function draw() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
+
+    // KIRMIZI DUVARLAR (SINIRLAR)
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 10;
+    ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+    ctx.lineWidth = 1;
 
     particles.forEach(p => {
         ctx.fillStyle = "yellow";
