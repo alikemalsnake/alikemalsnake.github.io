@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - İMKANSIZ MOD</title>
+<title>Ali Kemal Snake.io - Stratejik Botlar</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
   canvas { display: block; background: #080808; }
@@ -34,8 +34,8 @@
   <input type="text" id="nameInput" placeholder="İsmin..." maxlength="15">
   <div style="margin:15px 0;">
     <select id="difficulty">
-      <option value="4.5">KOLAY (Sakin)</option>
-      <option value="9.5">ZOR (Tehlikeli)</option>
+      <option value="4.5">KOLAY</option>
+      <option value="9.5">ZOR (Stratejik)</option>
       <option value="13.5">🔥🔥 İMKANSIZ 🔥🔥</option>
     </select>
   </div>
@@ -74,10 +74,11 @@ function createBot() {
         x: Math.random()*(WORLD_SIZE-400)+200, 
         y: Math.random()*(WORLD_SIZE-400)+200,
         angle: Math.random()*Math.PI*2, 
-        score: Math.floor(Math.random()*15)+5, 
+        score: Math.floor(Math.random()*25)+10, 
         segments: [], 
         alive: true, 
-        isBot: true
+        isBot: true,
+        state: "roam" // roam, attack, flee
     };
 }
 
@@ -96,16 +97,7 @@ function dropLoot(snake) {
 function startGame() {
     let rawName = document.getElementById("nameInput").value.trim();
     currentSpeed = parseFloat(document.getElementById("difficulty").value);
-    
-    // SADECE ALİ KEMAL ADMİN OLABİLİR
-    if(rawName === "Ali Kemal") { 
-        isAdmin = true; 
-        rawName = "Ali Kemal [Admin]"; 
-    } else {
-        isAdmin = false;
-    }
-    
-    godMode = false; // Başlarken ölümsüzlük kapalı
+    if(rawName === "Ali Kemal") { isAdmin = true; rawName = "Ali Kemal [Admin]"; }
     document.getElementById("menu").style.display = "none";
     gameActive = true;
     init(rawName || "Oyuncu");
@@ -118,7 +110,7 @@ function init(pName) {
         x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, score: 0, segments: [], alive: true, isBot: false
     });
     for(let i=0; i<BOT_COUNT; i++) snakes.push(createBot());
-    for(let i=0; i<850; i++) spawnParticle();
+    for(let i=0; i<900; i++) spawnParticle();
     requestAnimationFrame(loop);
 }
 
@@ -131,13 +123,10 @@ function spawnParticle() {
     });
 }
 
-// KLAVYE KONTROLLERİ
 window.addEventListener('keydown', (e) => {
     let k = e.key.toLowerCase();
     if(k === "arrowleft") turnDir = -0.12;
     if(k === "arrowright") turnDir = 0.12;
-    
-    // G TUŞU ÇALIŞTIRMA (Admin ise)
     if(k === "g" && isAdmin) {
         godMode = !godMode;
         document.getElementById("godTag").style.display = godMode ? "block" : "none";
@@ -163,23 +152,40 @@ function update() {
         }
         
         if (s.isBot) {
-            // BOT AI - İMKANSIZ MODDA ÇOK DAHA AGRESİF
-            let distToPlayer = player ? Math.hypot(player.x - s.x, player.y - s.y) : 9999;
+            // STRATEJİK AI
+            let target = player; 
+            let dist = target ? Math.hypot(target.x - s.x, target.y - s.y) : 9999;
             
-            // Algılama mesafesi zorluğa göre artar
-            let detectionRange = currentSpeed > 10 ? 2500 : 800;
+            // Bot Karar Mekanizması
+            if (dist < 400 && Math.random() < 0.05) s.state = "attack";
+            else if (dist > 1000) s.state = "roam";
 
-            if (player && distToPlayer < detectionRange) {
-                let targetAngle = Math.atan2(player.y - s.y, player.x - s.x);
-                let diff = targetAngle - s.angle;
-                while (diff < -Math.PI) diff += Math.PI * 2;
-                while (diff > Math.PI) diff -= Math.PI * 2;
-                // İmkansız modda botlar çok daha keskin döner
-                s.angle += diff * (currentSpeed > 10 ? 0.15 : 0.08);
-            } else {
-                s.angle += (Math.random() - 0.5) * 0.2;
+            // Yoldaki Tehlikeden Kaçma (Gövdeye çarpmama zekası)
+            let danger = false;
+            snakes.forEach(other => {
+                if (s === other) return;
+                other.segments.forEach((seg, idx) => {
+                    if (idx % 3 === 0 && Math.hypot(s.x - seg.x, s.y - seg.y) < 60) {
+                        s.angle += 0.4; // Kaçış manevrası
+                        danger = true;
+                    }
+                });
+            });
+
+            if (!danger) {
+                if (s.state === "attack" && target) {
+                    // Tahminli Saldırı: Oyuncunun biraz önüne doğru git
+                    let leadX = target.x + Math.cos(target.angle) * 100;
+                    let leadY = target.y + Math.sin(target.angle) * 100;
+                    let targetAngle = Math.atan2(leadY - s.y, leadX - s.x);
+                    let diff = targetAngle - s.angle;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    s.angle += diff * 0.15;
+                } else {
+                    s.angle += (Math.random() - 0.5) * 0.2; // Sakin gezinti
+                }
             }
-            // Duvar koruması
             if (s.x < 100 || s.x > WORLD_SIZE - 100 || s.y < 100 || s.y > WORLD_SIZE - 100) s.angle += 0.3;
         } else {
             s.angle += turnDir;
@@ -188,7 +194,6 @@ function update() {
         s.x += Math.cos(s.angle) * currentSpeed;
         s.y += Math.sin(s.angle) * currentSpeed;
 
-        // ÖLÜM VE ÖLÜMSÜZLÜK KONTROLÜ
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
             if(s.isBot || !godMode) {
                 s.alive = false;
@@ -213,11 +218,26 @@ function update() {
             }
         }
 
-        // Çarpışma: Kafayı bir yere vurma
+        // Çarpışma Kontrolü (Gelişmiş)
         snakes.forEach(other => {
-            if(s === other || !other.alive) return;
+            if(!other.alive) return;
+            
+            // Kafa kafaya çarpışma
+            if (s !== other && Math.hypot(s.x - other.x, s.y - other.y) < 25) {
+                if (!s.isBot && godMode) {
+                    other.alive = false;
+                } else {
+                    s.alive = false;
+                    other.alive = false;
+                    if(!s.isBot) setTimeout(() => location.reload(), 800);
+                }
+                return;
+            }
+
+            // Gövdeye çarpma
             other.segments.forEach((p, idx) => {
-                if(idx > 5 && Math.hypot(s.x - p.x, s.y - p.y) < 14) {
+                if (s === other && idx < 10) return; 
+                if(Math.hypot(s.x - p.x, s.y - p.y) < 16) {
                     if(s.isBot || !godMode) {
                         s.alive = false;
                         if(!s.isBot) { dropLoot(s); setTimeout(() => location.reload(), 800); }
