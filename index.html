@@ -2,13 +2,12 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Ölümsüzlük Aktif</title>
+<title>Ali Kemal Snake.io - İMKANSIZ MOD</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
   canvas { display: block; background: #080808; }
   #ui { position: fixed; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
   #scoreBox { font-size: 35px; color: #00ff00; font-weight: bold; }
-  /* ÖLÜMSÜZLÜK YAZISI */
   #godTag { display: none; color: white; background: red; padding: 10px 20px; border-radius: 10px; margin-top: 10px; font-weight: bold; border: 3px solid white; box-shadow: 0 0 20px red; }
   #leaderboard { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.85); padding: 15px; border: 3px solid #ffd700; border-radius: 15px; min-width: 200px; }
   .row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; font-size: 16px; }
@@ -35,9 +34,9 @@
   <input type="text" id="nameInput" placeholder="İsmin..." maxlength="15">
   <div style="margin:15px 0;">
     <select id="difficulty">
-      <option value="4.5">KOLAY</option>
-      <option value="6.5" selected>ORTA</option>
-      <option value="9.5">ZOR</option>
+      <option value="4.5">KOLAY (Sakin)</option>
+      <option value="9.5">ZOR (Tehlikeli)</option>
+      <option value="13.5">🔥🔥 İMKANSIZ 🔥🔥</option>
     </select>
   </div>
   <button onclick="startGame()">BAŞLAT</button>
@@ -95,20 +94,21 @@ function dropLoot(snake) {
 }
 
 function startGame() {
-    let nameInput = document.getElementById("nameInput").value.trim();
+    let rawName = document.getElementById("nameInput").value.trim();
     currentSpeed = parseFloat(document.getElementById("difficulty").value);
     
-    // BURASI ÖNEMLİ: İsmin Ali Kemal ise Admin yetkisi alırsın
-    if(nameInput === "Ali Kemal") { 
+    // SADECE ALİ KEMAL ADMİN OLABİLİR
+    if(rawName === "Ali Kemal") { 
         isAdmin = true; 
-        nameInput = "Ali Kemal [Admin]"; 
+        rawName = "Ali Kemal [Admin]"; 
     } else {
         isAdmin = false;
     }
     
+    godMode = false; // Başlarken ölümsüzlük kapalı
     document.getElementById("menu").style.display = "none";
     gameActive = true;
-    init(nameInput || "Oyuncu");
+    init(rawName || "Oyuncu");
 }
 
 function init(pName) {
@@ -118,7 +118,7 @@ function init(pName) {
         x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, score: 0, segments: [], alive: true, isBot: false
     });
     for(let i=0; i<BOT_COUNT; i++) snakes.push(createBot());
-    for(let i=0; i<800; i++) spawnParticle();
+    for(let i=0; i<850; i++) spawnParticle();
     requestAnimationFrame(loop);
 }
 
@@ -131,19 +131,19 @@ function spawnParticle() {
     });
 }
 
-// TUŞ KONTROLLERİ (Ölümsüzlük Tuşu Burası)
-window.onkeydown = (e) => {
+// KLAVYE KONTROLLERİ
+window.addEventListener('keydown', (e) => {
     let k = e.key.toLowerCase();
-    if(k === "arrowleft") turnDir = -0.11;
-    if(k === "arrowright") turnDir = 0.11;
+    if(k === "arrowleft") turnDir = -0.12;
+    if(k === "arrowright") turnDir = 0.12;
     
-    // G tuşuna basınca admin isen ölümsüzlüğü aç/kapat
+    // G TUŞU ÇALIŞTIRMA (Admin ise)
     if(k === "g" && isAdmin) {
         godMode = !godMode;
         document.getElementById("godTag").style.display = godMode ? "block" : "none";
     }
-};
-window.onkeyup = () => turnDir = 0;
+});
+window.addEventListener('keyup', () => turnDir = 0);
 
 function loop() {
     if(!gameActive) return;
@@ -163,21 +163,24 @@ function update() {
         }
         
         if (s.isBot) {
+            // BOT AI - İMKANSIZ MODDA ÇOK DAHA AGRESİF
             let distToPlayer = player ? Math.hypot(player.x - s.x, player.y - s.y) : 9999;
-            let detectionRange = currentSpeed > 8 ? 1500 : (currentSpeed > 5 ? 800 : 400);
+            
+            // Algılama mesafesi zorluğa göre artar
+            let detectionRange = currentSpeed > 10 ? 2500 : 800;
 
             if (player && distToPlayer < detectionRange) {
                 let targetAngle = Math.atan2(player.y - s.y, player.x - s.x);
                 let diff = targetAngle - s.angle;
                 while (diff < -Math.PI) diff += Math.PI * 2;
                 while (diff > Math.PI) diff -= Math.PI * 2;
-                s.angle += diff * 0.08;
+                // İmkansız modda botlar çok daha keskin döner
+                s.angle += diff * (currentSpeed > 10 ? 0.15 : 0.08);
             } else {
                 s.angle += (Math.random() - 0.5) * 0.2;
             }
-            if (s.x < 150 || s.x > WORLD_SIZE - 150 || s.y < 150 || s.y > WORLD_SIZE - 150) {
-                s.angle += 0.2;
-            }
+            // Duvar koruması
+            if (s.x < 100 || s.x > WORLD_SIZE - 100 || s.y < 100 || s.y > WORLD_SIZE - 100) s.angle += 0.3;
         } else {
             s.angle += turnDir;
         }
@@ -185,13 +188,12 @@ function update() {
         s.x += Math.cos(s.angle) * currentSpeed;
         s.y += Math.sin(s.angle) * currentSpeed;
 
-        // ÖLÜMSÜZLÜK KONTROLÜ (DUVARLAR)
+        // ÖLÜM VE ÖLÜMSÜZLÜK KONTROLÜ
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
             if(s.isBot || !godMode) {
                 s.alive = false;
                 if(!s.isBot) { dropLoot(s); setTimeout(() => location.reload(), 800); }
             } else {
-                // Duvara çarpınca ölme, geri dön
                 if(s.x < 0) s.x = 0; if(s.x > WORLD_SIZE) s.x = WORLD_SIZE;
                 if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
             }
@@ -200,6 +202,7 @@ function update() {
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 15) s.segments.pop();
 
+        // Yem yeme
         for(let j = particles.length - 1; j >= 0; j--) {
             let p = particles[j];
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
@@ -210,7 +213,7 @@ function update() {
             }
         }
 
-        // ÖLÜMSÜZLÜK KONTROLÜ (ÇARPIŞMALAR)
+        // Çarpışma: Kafayı bir yere vurma
         snakes.forEach(other => {
             if(s === other || !other.alive) return;
             other.segments.forEach((p, idx) => {
@@ -241,19 +244,13 @@ function draw() {
 
     particles.forEach(p => {
         ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.size || 6, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
     });
 
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
-        
-        // Ölümsüzken parlama efekti
-        if(!s.isBot && godMode) { 
-            ctx.shadowBlur = 25; 
-            ctx.shadowColor = "white"; 
-        }
-
+        if(!s.isBot && godMode) { ctx.shadowBlur = 20; ctx.shadowColor = "white"; }
         s.segments.forEach((seg, i) => {
             ctx.beginPath(); ctx.arc(seg.x, seg.y, i === 0 ? 18 : 14, 0, Math.PI*2); ctx.fill();
         });
