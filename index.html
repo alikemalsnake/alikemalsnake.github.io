@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Stratejik Botlar</title>
+<title>Ali Kemal Snake.io - Kesintisiz Oyun</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
   canvas { display: block; background: #080808; }
@@ -78,7 +78,7 @@ function createBot() {
         segments: [], 
         alive: true, 
         isBot: true,
-        state: "roam" // roam, attack, flee
+        state: "roam"
     };
 }
 
@@ -97,9 +97,17 @@ function dropLoot(snake) {
 function startGame() {
     let rawName = document.getElementById("nameInput").value.trim();
     currentSpeed = parseFloat(document.getElementById("difficulty").value);
-    if(rawName === "Ali Kemal") { isAdmin = true; rawName = "Ali Kemal [Admin]"; }
+    
+    if(rawName === "Ali Kemal") { 
+        isAdmin = true; 
+        rawName = "Ali Kemal [Admin]"; 
+    } else {
+        isAdmin = false;
+        godMode = false;
+        document.getElementById("godTag").style.display = "none";
+    }
+    
     document.getElementById("menu").style.display = "none";
-    gameActive = true;
     init(rawName || "Oyuncu");
 }
 
@@ -111,6 +119,7 @@ function init(pName) {
     });
     for(let i=0; i<BOT_COUNT; i++) snakes.push(createBot());
     for(let i=0; i<900; i++) spawnParticle();
+    gameActive = true;
     requestAnimationFrame(loop);
 }
 
@@ -147,26 +156,26 @@ function update() {
     for(let i = 0; i < snakes.length; i++) {
         let s = snakes[i];
         if(!s.alive) {
-            if(s.isBot) { dropLoot(s); snakes[i] = createBot(); }
+            if(s.isBot) { 
+                dropLoot(s); 
+                snakes[i] = createBot(); 
+            }
             continue;
         }
         
         if (s.isBot) {
-            // STRATEJİK AI
             let target = player; 
             let dist = target ? Math.hypot(target.x - s.x, target.y - s.y) : 9999;
             
-            // Bot Karar Mekanizması
             if (dist < 400 && Math.random() < 0.05) s.state = "attack";
             else if (dist > 1000) s.state = "roam";
 
-            // Yoldaki Tehlikeden Kaçma (Gövdeye çarpmama zekası)
             let danger = false;
             snakes.forEach(other => {
                 if (s === other) return;
                 other.segments.forEach((seg, idx) => {
                     if (idx % 3 === 0 && Math.hypot(s.x - seg.x, s.y - seg.y) < 60) {
-                        s.angle += 0.4; // Kaçış manevrası
+                        s.angle += 0.4;
                         danger = true;
                     }
                 });
@@ -174,7 +183,6 @@ function update() {
 
             if (!danger) {
                 if (s.state === "attack" && target) {
-                    // Tahminli Saldırı: Oyuncunun biraz önüne doğru git
                     let leadX = target.x + Math.cos(target.angle) * 100;
                     let leadY = target.y + Math.sin(target.angle) * 100;
                     let targetAngle = Math.atan2(leadY - s.y, leadX - s.x);
@@ -183,7 +191,7 @@ function update() {
                     while (diff > Math.PI) diff -= Math.PI * 2;
                     s.angle += diff * 0.15;
                 } else {
-                    s.angle += (Math.random() - 0.5) * 0.2; // Sakin gezinti
+                    s.angle += (Math.random() - 0.5) * 0.2;
                 }
             }
             if (s.x < 100 || s.x > WORLD_SIZE - 100 || s.y < 100 || s.y > WORLD_SIZE - 100) s.angle += 0.3;
@@ -194,10 +202,15 @@ function update() {
         s.x += Math.cos(s.angle) * currentSpeed;
         s.y += Math.sin(s.angle) * currentSpeed;
 
+        // DUVAR KONTROLÜ
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
             if(s.isBot || !godMode) {
                 s.alive = false;
-                if(!s.isBot) { dropLoot(s); setTimeout(() => location.reload(), 800); }
+                if(!s.isBot) { 
+                    gameActive = false; 
+                    dropLoot(s); 
+                    setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); 
+                }
             } else {
                 if(s.x < 0) s.x = 0; if(s.x > WORLD_SIZE) s.x = WORLD_SIZE;
                 if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
@@ -207,7 +220,7 @@ function update() {
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 15) s.segments.pop();
 
-        // Yem yeme
+        // YEM YEME
         for(let j = particles.length - 1; j >= 0; j--) {
             let p = particles[j];
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
@@ -218,29 +231,32 @@ function update() {
             }
         }
 
-        // Çarpışma Kontrolü (Gelişmiş)
+        // ÇARPIŞMA KONTROLÜ
         snakes.forEach(other => {
             if(!other.alive) return;
-            
-            // Kafa kafaya çarpışma
             if (s !== other && Math.hypot(s.x - other.x, s.y - other.y) < 25) {
                 if (!s.isBot && godMode) {
                     other.alive = false;
                 } else {
                     s.alive = false;
                     other.alive = false;
-                    if(!s.isBot) setTimeout(() => location.reload(), 800);
+                    if(!s.isBot) { 
+                        gameActive = false; 
+                        setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); 
+                    }
                 }
                 return;
             }
-
-            // Gövdeye çarpma
             other.segments.forEach((p, idx) => {
                 if (s === other && idx < 10) return; 
                 if(Math.hypot(s.x - p.x, s.y - p.y) < 16) {
                     if(s.isBot || !godMode) {
                         s.alive = false;
-                        if(!s.isBot) { dropLoot(s); setTimeout(() => location.reload(), 800); }
+                        if(!s.isBot) { 
+                            gameActive = false; 
+                            dropLoot(s); 
+                            setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); 
+                        }
                     }
                 }
             });
