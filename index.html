@@ -2,23 +2,18 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Ultra Sürüm</title>
+<title>Ali Kemal Snake.io - Klasik Puan</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   body { background: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   #viewport { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
   canvas { background: #050505; position: absolute; border: 15px solid #222; }
-  
   .screen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; background: rgba(0,0,0,0.95); padding: 30px; border-radius: 20px; text-align: center; border: 4px solid #00ff00; min-width: 320px; display: none; }
   .active { display: block; }
-  
   select, input { font-size: 18px; padding: 12px; border-radius: 10px; margin: 10px; width: 85%; background: #111; color: white; border: 2px solid #444; }
   button { font-size: 22px; padding: 15px 40px; border-radius: 12px; background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 15px; }
-  
   #ui { position: fixed; top: 20px; left: 20px; z-index: 50; pointer-events: none; }
   #scoreBox { font-size: 32px; color: #00ff00; text-shadow: 0 0 10px #00ff00; }
-
-  /* MOBİL TUŞLAR */
   .controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: none; grid-template-columns: repeat(3, 1fr); gap: 20px; z-index: 150; }
   @media (max-width: 768px) { .controls { display: grid; } }
   .btn-dir { width: 75px; height: 75px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: white; border: 2px solid #555; }
@@ -29,15 +24,15 @@
 <div id="ui"><div id="scoreBox">Puan: 0</div></div>
 
 <div id="menu" class="screen active">
-  <h1 style="color:#00ff00; font-size: 35px; margin-bottom: 5px;">SNAKE.IO ULTRA</h1>
+  <h1 style="color:#00ff00; font-size: 35px;">SNAKE.IO</h1>
   <input type="text" id="nameInput" placeholder="Adını Yaz..." maxlength="12">
-  <p>Zorluk Seç ve Savaş:</p>
+  <p>Zorluk Seç:</p>
   <select id="difficulty">
-    <option value="easy">KOLAY (Yavaş Botlar)</option>
-    <option value="hard">ZOR (Hızlı & Saldırgan)</option>
-    <option value="impossible">İMKANSIZ (Pro Oyuncular!)</option>
+    <option value="easy">KOLAY</option>
+    <option value="hard" selected>ZOR</option>
+    <option value="impossible">İMKANSIZ</option>
   </select><br>
-  <button onclick="startGame()">OYUNA BAŞLA</button>
+  <button onclick="startGame()">BAŞLAT</button>
 </div>
 
 <div id="deathScreen" class="screen">
@@ -65,9 +60,9 @@ let diffSetting = { botSpeed: 4, botIntel: 0.05, botAggro: 0.1 };
 
 function startGame() {
     const diff = document.getElementById("difficulty").value;
-    if(diff === "easy") diffSetting = { botSpeed: 3.5, botIntel: 0.03, botAggro: 0.05 };
-    if(diff === "hard") diffSetting = { botSpeed: 5, botIntel: 0.1, botAggro: 0.3 };
-    if(diff === "impossible") diffSetting = { botSpeed: 7, botIntel: 0.3, botAggro: 0.6 };
+    if(diff === "easy") diffSetting = { botSpeed: 3.5, botIntel: 0.03, botAggro: 0.02 };
+    if(diff === "hard") diffSetting = { botSpeed: 5, botIntel: 0.12, botAggro: 0.3 };
+    if(diff === "impossible") diffSetting = { botSpeed: 7, botIntel: 0.35, botAggro: 0.7 };
 
     document.getElementById("menu").classList.remove("active");
     gameActive = true;
@@ -83,21 +78,22 @@ function init() {
     snakes = []; particles = [];
     let p = createSnake(document.getElementById("nameInput").value || "Ali Kemal", "#00ff00", false);
     p.x = WORLD_SIZE/2; p.y = WORLD_SIZE/2;
+    p.score = 50; // Başlangıç uzunluğu (Sadece görsel için, puan 0 başlar)
     snakes.push(p);
     
-    // 75 TANE BOT!
-    for(let i=0; i<75; i++) {
-        let b = createSnake("Bot_"+i, `hsl(${Math.random()*360}, 80%, 55%)`, true);
+    for(let i=0; i<30; i++) {
+        let b = createSnake("Bot_"+i, `hsl(${Math.random()*360}, 85%, 55%)`, true);
         b.x = Math.random()*WORLD_SIZE; b.y = Math.random()*WORLD_SIZE;
+        b.score = 50;
         snakes.push(b);
     }
-    for(let i=0; i<1000; i++) spawnParticle();
+    for(let i=0; i<800; i++) spawnParticle();
     requestAnimationFrame(loop);
 }
 
 function createSnake(name, color, isBot) {
     return { name, color, isBot, alive: true, x:0, y:0, angle: Math.random()*Math.PI*2, 
-             speed: isBot ? diffSetting.botSpeed : 6, score: 70, segments: [] };
+             actualScore: 0, speed: isBot ? diffSetting.botSpeed : 6, score: 50, segments: [] };
 }
 
 function spawnParticle(x, y) {
@@ -130,12 +126,9 @@ function update() {
             let distToPlayer = Math.hypot(s.x - player.x, s.y - player.y);
             let targetAngle;
 
-            // AKILLI BOT SİSTEMİ (İnsan gibi davranır)
-            if(distToPlayer < 500 && player.alive && Math.random() < diffSetting.botAggro) {
-                // Seni sıkıştırmaya çalışır!
+            if(distToPlayer < 600 && player.alive && Math.random() < diffSetting.botAggro) {
                 targetAngle = Math.atan2(player.y - s.y, player.x - s.x);
             } else {
-                // Yemeğe gider
                 let target = particles[0];
                 let dMin = Math.hypot(s.x-target.x, s.y-target.y);
                 particles.slice(0, 15).forEach(p => {
@@ -160,18 +153,19 @@ function update() {
         if(s.x<0 || s.x>WORLD_SIZE || s.y<0 || s.y>WORLD_SIZE) s.alive = false;
 
         s.segments.unshift({x: s.x, y: s.y});
-        if(s.segments.length > s.score/2.5) s.segments.pop();
+        if(s.segments.length > s.score/2.8) s.segments.pop();
 
-        // Yemek
+        // PUAN SİSTEMİ: 1 YEM = 1 PUAN
         particles.forEach((p, i) => {
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
-                particles.splice(i,1); s.score += 15;
-                if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.score;
+                particles.splice(i,1); 
+                s.actualScore += 1; // Ekranda görünen puan
+                s.score += 2; // Yılanın uzaması için gereken değer
+                if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.actualScore;
                 spawnParticle();
             }
         });
 
-        // Çarpışma
         snakes.forEach(other => {
             if(!other.alive) return;
             other.segments.slice(12).forEach(part => {
@@ -183,7 +177,7 @@ function update() {
             s.segments.forEach((p, i) => { if(i%3===0) spawnParticle(p.x,p.y); });
             if(!s.isBot) {
                 gameActive = false;
-                document.getElementById("finalScore").innerText = "Skorun: " + s.score;
+                document.getElementById("finalScore").innerText = "Skorun: " + s.actualScore;
                 document.getElementById("deathScreen").classList.add("active");
             }
         }
@@ -193,7 +187,6 @@ function update() {
 function draw() {
     ctx.fillStyle = "#050505"; ctx.fillRect(0,0,WORLD_SIZE,WORLD_SIZE);
     
-    // Izgara
     ctx.strokeStyle = "#1a1a1a";
     for(let i=0; i<WORLD_SIZE; i+=100) {
         ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,WORLD_SIZE); ctx.stroke();
