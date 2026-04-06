@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - 0 Puan Başlangıç</title>
+<title>Ali Kemal Snake.io - Gerçek Oyuncular</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   body { background: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; touch-action: none; }
@@ -58,6 +58,9 @@ canvas.width = WORLD_SIZE; canvas.height = WORLD_SIZE;
 let snakes = [], particles = [], gameActive = false, isBoosting = false, turnDir = 0;
 let diffSetting = { botSpeed: 4, botIntel: 0.05, botAggro: 0.1 };
 
+// İNSAN İSİMLERİ LİSTESİ
+const botNames = ["Kerem", "Efe", "Zeynep", "Mert", "Selin", "Arda", "Can", "Elif", "Burak", "Aslı", "Dragon_Slayer", "ProSnake", "Master_X", "Yılan_Serdar", "Efsane_7", "Ahmet", "Deniz", "Kaan", "Melek", "Gizem", "Savaşçı", "Gölge", "Speedy", "Thunder", "King_Ali", "Brave_Heart", "NoobMaster", "Pro_Player", "Winner", "Alpha"];
+
 function startGame() {
     const diff = document.getElementById("difficulty").value;
     if(diff === "easy") diffSetting = { botSpeed: 3.5, botIntel: 0.03, botAggro: 0.02 };
@@ -76,12 +79,17 @@ function resetGame() {
 
 function init() {
     snakes = []; particles = [];
-    let p = createSnake(document.getElementById("nameInput").value || "Ali Kemal", "#00ff00", false);
+    let pName = document.getElementById("nameInput").value || "Ali Kemal";
+    let p = createSnake(pName, "#00ff00", false);
     p.x = WORLD_SIZE/2; p.y = WORLD_SIZE/2;
     snakes.push(p);
     
+    // Rastgele isimli 30 bot oluştur
+    let usedNames = [...botNames];
     for(let i=0; i<30; i++) {
-        let b = createSnake("Bot_"+i, `hsl(${Math.random()*360}, 85%, 55%)`, true);
+        let nameIdx = Math.floor(Math.random() * usedNames.length);
+        let name = usedNames.splice(nameIdx, 1)[0] || ("Oyuncu_" + i);
+        let b = createSnake(name, `hsl(${Math.random()*360}, 85%, 55%)`, true);
         b.x = Math.random()*WORLD_SIZE; b.y = Math.random()*WORLD_SIZE;
         snakes.push(b);
     }
@@ -90,7 +98,6 @@ function init() {
 }
 
 function createSnake(name, color, isBot) {
-    // Score ve Segments artık tamamen sıfır veya minimumda başlıyor
     return { name, color, isBot, alive: true, x:0, y:0, angle: Math.random()*Math.PI*2, 
              actualScore: 0, speed: isBot ? diffSetting.botSpeed : 6, score: 5, segments: [] };
 }
@@ -152,17 +159,14 @@ function update() {
         if(s.x<0 || s.x>WORLD_SIZE || s.y<0 || s.y>WORLD_SIZE) s.alive = false;
 
         s.segments.unshift({x: s.x, y: s.y});
-        // Yılanın boyunu skora göre ayarla (Skor arttıkça segment sayısı artar)
-        if(s.segments.length > s.score + 5) s.segments.pop();
+        // Yılanın boyunu 0 puanda kısa olacak şekilde ayarladık
+        if(s.segments.length > (s.actualScore * 2) + 10) s.segments.pop();
 
         particles.forEach((p, i) => {
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
                 particles.splice(i,1); 
-                s.actualScore += 1; // Ekrandaki puan
-                s.score += 2; // Yılanın uzama miktarı
-                if(!s.isBot) {
-                    document.getElementById("scoreBox").innerText = "Puan: " + s.actualScore;
-                }
+                s.actualScore += 1;
+                if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.actualScore;
                 spawnParticle();
             }
         });
@@ -204,7 +208,6 @@ function draw() {
         ctx.fillStyle = s.color;
         s.segments.forEach((p, i) => {
             ctx.beginPath(); 
-            // Baş kısmı biraz daha büyük, gövde incelerek gider
             let r = i===0 ? 16 : 13-(i*0.05>7?7:i*0.05);
             ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill();
             if(i===0) { 
