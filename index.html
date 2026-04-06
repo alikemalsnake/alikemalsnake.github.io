@@ -2,59 +2,81 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Avcı Botlar</title>
+<title>Ali Kemal Snake.io - Ultra Sürüm</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   body { background: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   #viewport { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-  canvas { background: #020202; position: absolute; border: 12px solid #333; }
-  .screen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; background: rgba(0,0,0,0.95); padding: 35px; border-radius: 25px; text-align: center; border: 4px solid #ff0000; min-width: 320px; }
+  canvas { background: #050505; position: absolute; border: 15px solid #222; }
+  
+  .screen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; background: rgba(0,0,0,0.95); padding: 30px; border-radius: 20px; text-align: center; border: 4px solid #00ff00; min-width: 320px; display: none; }
+  .active { display: block; }
+  
   select, input { font-size: 18px; padding: 12px; border-radius: 10px; margin: 10px; width: 85%; background: #111; color: white; border: 2px solid #444; }
-  button { font-size: 22px; padding: 15px 40px; border-radius: 12px; background: #d9534f; color: white; border: none; cursor: pointer; font-weight: bold; }
+  button { font-size: 22px; padding: 15px 40px; border-radius: 12px; background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 15px; }
+  
   #ui { position: fixed; top: 20px; left: 20px; z-index: 50; pointer-events: none; }
-  #scoreBox { font-size: 32px; color: #00ff00; text-shadow: 0 0 15px #00ff00; }
+  #scoreBox { font-size: 32px; color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+
+  /* MOBİL TUŞLAR */
   .controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: none; grid-template-columns: repeat(3, 1fr); gap: 20px; z-index: 150; }
   @media (max-width: 768px) { .controls { display: grid; } }
-  .btn-dir { width: 75px; height: 75px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: white; border: 2px solid #666; }
+  .btn-dir { width: 75px; height: 75px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: white; border: 2px solid #555; }
 </style>
 </head>
 <body>
 
 <div id="ui"><div id="scoreBox">Puan: 0</div></div>
 
-<div id="menu" class="screen">
-  <h1 style="color:#ff0000; margin-bottom:5px; font-size: 40px;">AVCI ARENA</h1>
-  <input type="text" id="nameInput" placeholder="Savaşçı Adın..." maxlength="12">
-  <p>Botların Saldırganlığı:</p>
+<div id="menu" class="screen active">
+  <h1 style="color:#00ff00; font-size: 35px; margin-bottom: 5px;">SNAKE.IO ULTRA</h1>
+  <input type="text" id="nameInput" placeholder="Adını Yaz..." maxlength="12">
+  <p>Zorluk Seç ve Savaş:</p>
   <select id="difficulty">
-    <option value="0.03">KOLAY (Barışçıl)</option>
-    <option value="0.12">ZOR (Saldırgan)</option>
-    <option value="0.35">İMKANSIZ (TAM BİR AVCI!)</option>
+    <option value="easy">KOLAY (Yavaş Botlar)</option>
+    <option value="hard">ZOR (Hızlı & Saldırgan)</option>
+    <option value="impossible">İMKANSIZ (Pro Oyuncular!)</option>
   </select><br>
-  <button onclick="startGame()">SAVAŞI BAŞLAT</button>
+  <button onclick="startGame()">OYUNA BAŞLA</button>
+</div>
+
+<div id="deathScreen" class="screen">
+    <h1 style="color:#ff0000; font-size: 40px;">ÖLDÜN!</h1>
+    <p id="finalScore" style="font-size: 24px;"></p>
+    <button onclick="resetGame()">TEKRAR OYNA</button>
 </div>
 
 <div id="viewport"><canvas id="gameCanvas"></canvas></div>
 
 <div class="controls">
     <div style="grid-column:1" class="btn-dir" onpointerdown="turnDir=-0.14" onpointerup="turnDir=0">⬅️</div>
-    <div style="grid-column:2; background:rgba(255,0,0,0.3);" class="btn-dir" onpointerdown="isBoosting=true" onpointerup="isBoosting=false">🚀</div>
+    <div style="grid-column:2; background:rgba(0,255,0,0.2);" class="btn-dir" onpointerdown="isBoosting=true" onpointerup="isBoosting=false">🚀</div>
     <div style="grid-column:3" class="btn-dir" onpointerdown="turnDir=0.14" onpointerup="turnDir=0">➡️</div>
 </div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const WORLD_SIZE = 4000; // Haritayı daha da büyüttük
+const WORLD_SIZE = 4000;
 canvas.width = WORLD_SIZE; canvas.height = WORLD_SIZE;
 
-let snakes = [], particles = [], gameActive = false, isBoosting = false, turnDir = 0, botAggression = 0.05;
+let snakes = [], particles = [], gameActive = false, isBoosting = false, turnDir = 0;
+let diffSetting = { botSpeed: 4, botIntel: 0.05, botAggro: 0.1 };
 
 function startGame() {
-    botAggression = parseFloat(document.getElementById("difficulty").value);
-    document.getElementById("menu").style.display = "none";
+    const diff = document.getElementById("difficulty").value;
+    if(diff === "easy") diffSetting = { botSpeed: 3.5, botIntel: 0.03, botAggro: 0.05 };
+    if(diff === "hard") diffSetting = { botSpeed: 5, botIntel: 0.1, botAggro: 0.3 };
+    if(diff === "impossible") diffSetting = { botSpeed: 7, botIntel: 0.3, botAggro: 0.6 };
+
+    document.getElementById("menu").classList.remove("active");
     gameActive = true;
     init();
+}
+
+function resetGame() {
+    document.getElementById("deathScreen").classList.remove("active");
+    document.getElementById("menu").classList.add("active");
 }
 
 function init() {
@@ -63,23 +85,23 @@ function init() {
     p.x = WORLD_SIZE/2; p.y = WORLD_SIZE/2;
     snakes.push(p);
     
-    // 50 TANE BOT! (Daha çok bot istedin)
-    for(let i=0; i<50; i++) {
-        let b = createSnake("Avcı_"+i, `hsl(${Math.random()*360}, 85%, 55%)`, true);
+    // 75 TANE BOT!
+    for(let i=0; i<75; i++) {
+        let b = createSnake("Bot_"+i, `hsl(${Math.random()*360}, 80%, 55%)`, true);
         b.x = Math.random()*WORLD_SIZE; b.y = Math.random()*WORLD_SIZE;
         snakes.push(b);
     }
-    // 1000 TANE YEM!
     for(let i=0; i<1000; i++) spawnParticle();
     requestAnimationFrame(loop);
 }
 
 function createSnake(name, color, isBot) {
-    return { name, color, isBot, alive: true, x:0, y:0, angle: Math.random()*Math.PI*2, speed: 6, score: 70, segments: [] };
+    return { name, color, isBot, alive: true, x:0, y:0, angle: Math.random()*Math.PI*2, 
+             speed: isBot ? diffSetting.botSpeed : 6, score: 70, segments: [] };
 }
 
 function spawnParticle(x, y) {
-    particles.push({ x: x ?? Math.random()*WORLD_SIZE, y: y ?? Math.random()*WORLD_SIZE, color: `hsl(${Math.random()*360},100%,65%)`, size: Math.random()*4+2 });
+    particles.push({ x: x ?? Math.random()*WORLD_SIZE, y: y ?? Math.random()*WORLD_SIZE, color: `hsl(${Math.random()*360},100%,60%)`, size: Math.random()*4+2 });
 }
 
 document.addEventListener("keydown", e => {
@@ -105,15 +127,15 @@ function update() {
         if(!s.alive) return;
 
         if(s.isBot) {
-            // AVCI BOT ZEKA SİSTEMİ
             let distToPlayer = Math.hypot(s.x - player.x, s.y - player.y);
             let targetAngle;
 
-            // Eğer bot yakınındaysa ve zorluk yüksekse seni kovalar!
-            if(botAggression > 0.1 && distToPlayer < 600 && player.alive) {
+            // AKILLI BOT SİSTEMİ (İnsan gibi davranır)
+            if(distToPlayer < 500 && player.alive && Math.random() < diffSetting.botAggro) {
+                // Seni sıkıştırmaya çalışır!
                 targetAngle = Math.atan2(player.y - s.y, player.x - s.x);
             } else {
-                // Yoksa yemeğe gider
+                // Yemeğe gider
                 let target = particles[0];
                 let dMin = Math.hypot(s.x-target.x, s.y-target.y);
                 particles.slice(0, 15).forEach(p => {
@@ -126,50 +148,53 @@ function update() {
             let diff = targetAngle - s.angle;
             while(diff < -Math.PI) diff += Math.PI*2;
             while(diff > Math.PI) diff -= Math.PI*2;
-            s.angle += diff * botAggression;
+            s.angle += diff * diffSetting.botIntel;
         } else {
             s.angle += turnDir;
         }
 
-        let speed = (isBoosting && !s.isBot) ? s.speed*1.8 : s.speed;
-        s.x += Math.cos(s.angle)*speed;
-        s.y += Math.sin(s.angle)*speed;
+        let currentSpeed = (isBoosting && !s.isBot) ? s.speed*2 : s.speed;
+        s.x += Math.cos(s.angle)*currentSpeed;
+        s.y += Math.sin(s.angle)*currentSpeed;
 
         if(s.x<0 || s.x>WORLD_SIZE || s.y<0 || s.y>WORLD_SIZE) s.alive = false;
 
         s.segments.unshift({x: s.x, y: s.y});
-        if(s.segments.length > s.score/2.8) s.segments.pop();
+        if(s.segments.length > s.score/2.5) s.segments.pop();
 
-        // Yemek yeme
+        // Yemek
         particles.forEach((p, i) => {
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
-                particles.splice(i,1); s.score += 12;
+                particles.splice(i,1); s.score += 15;
                 if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.score;
                 spawnParticle();
             }
         });
 
-        // Çarpışma (Ölüm)
+        // Çarpışma
         snakes.forEach(other => {
             if(!other.alive) return;
-            other.segments.slice(10).forEach(part => {
+            other.segments.slice(12).forEach(part => {
                 if(Math.hypot(s.x-part.x, s.y-part.y) < 16) s.alive = false;
             });
         });
 
         if(!s.alive) {
             s.segments.forEach((p, i) => { if(i%3===0) spawnParticle(p.x,p.y); });
-            if(!s.isBot) setTimeout(()=>location.reload(), 2000);
+            if(!s.isBot) {
+                gameActive = false;
+                document.getElementById("finalScore").innerText = "Skorun: " + s.score;
+                document.getElementById("deathScreen").classList.add("active");
+            }
         }
     });
 }
 
 function draw() {
-    ctx.fillStyle = "#020202"; ctx.fillRect(0,0,WORLD_SIZE,WORLD_SIZE);
+    ctx.fillStyle = "#050505"; ctx.fillRect(0,0,WORLD_SIZE,WORLD_SIZE);
     
-    // Izgara Çizimi
-    ctx.strokeStyle = "#151515";
-    ctx.lineWidth = 2;
+    // Izgara
+    ctx.strokeStyle = "#1a1a1a";
     for(let i=0; i<WORLD_SIZE; i+=100) {
         ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,WORLD_SIZE); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(WORLD_SIZE,i); ctx.stroke();
@@ -185,13 +210,11 @@ function draw() {
         ctx.fillStyle = s.color;
         s.segments.forEach((p, i) => {
             ctx.beginPath(); 
-            let r = i===0 ? 15 : 12-(i*0.02>6?6:i*0.02);
-            ctx.arc(p.x, p.y, r, 0, Math.PI*2); 
-            ctx.fill();
-            // Gözler
+            let r = i===0 ? 16 : 13-(i*0.02>7?7:i*0.02);
+            ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill();
             if(i===0) { 
-                ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2); ctx.fill(); 
-                ctx.fillStyle="black"; ctx.beginPath(); ctx.arc(p.x,p.y,2,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(p.x,p.y,5.5,0,Math.PI*2); ctx.fill(); 
+                ctx.fillStyle="black"; ctx.beginPath(); ctx.arc(p.x,p.y,2.5,0,Math.PI*2); ctx.fill();
                 ctx.fillStyle=s.color;
             }
         });
@@ -200,8 +223,10 @@ function draw() {
 
     const myS = snakes[0];
     const v = document.getElementById("viewport");
-    canvas.style.left = (v.offsetWidth/2 - myS.x) + "px";
-    canvas.style.top = (v.offsetHeight/2 - myS.y) + "px";
+    if(myS) {
+        canvas.style.left = (v.offsetWidth/2 - myS.x) + "px";
+        canvas.style.top = (v.offsetHeight/2 - myS.y) + "px";
+    }
 }
 </script>
 </body>
