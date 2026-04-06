@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Snake.io - Gerçek Oyuncular</title>
+<title>Ali Kemal Snake.io - Gerçek 1 Puan Modu</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   body { background: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; touch-action: none; }
@@ -58,7 +58,6 @@ canvas.width = WORLD_SIZE; canvas.height = WORLD_SIZE;
 let snakes = [], particles = [], gameActive = false, isBoosting = false, turnDir = 0;
 let diffSetting = { botSpeed: 4, botIntel: 0.05, botAggro: 0.1 };
 
-// İNSAN İSİMLERİ LİSTESİ
 const botNames = ["Kerem", "Efe", "Zeynep", "Mert", "Selin", "Arda", "Can", "Elif", "Burak", "Aslı", "Dragon_Slayer", "ProSnake", "Master_X", "Yılan_Serdar", "Efsane_7", "Ahmet", "Deniz", "Kaan", "Melek", "Gizem", "Savaşçı", "Gölge", "Speedy", "Thunder", "King_Ali", "Brave_Heart", "NoobMaster", "Pro_Player", "Winner", "Alpha"];
 
 function startGame() {
@@ -84,7 +83,6 @@ function init() {
     p.x = WORLD_SIZE/2; p.y = WORLD_SIZE/2;
     snakes.push(p);
     
-    // Rastgele isimli 30 bot oluştur
     let usedNames = [...botNames];
     for(let i=0; i<30; i++) {
         let nameIdx = Math.floor(Math.random() * usedNames.length);
@@ -98,12 +96,21 @@ function init() {
 }
 
 function createSnake(name, color, isBot) {
-    return { name, color, isBot, alive: true, x:0, y:0, angle: Math.random()*Math.PI*2, 
-             actualScore: 0, speed: isBot ? diffSetting.botSpeed : 6, score: 5, segments: [] };
+    return { 
+        name, color, isBot, alive: true, x:0, y:0, angle: Math.random()*Math.PI*2, 
+        actualScore: 0, 
+        speed: isBot ? diffSetting.botSpeed : 6, 
+        segments: [] 
+    };
 }
 
 function spawnParticle(x, y) {
-    particles.push({ x: x ?? Math.random()*WORLD_SIZE, y: y ?? Math.random()*WORLD_SIZE, color: `hsl(${Math.random()*360},100%,60%)`, size: Math.random()*4+2 });
+    particles.push({ 
+        x: x ?? Math.random()*WORLD_SIZE, 
+        y: y ?? Math.random()*WORLD_SIZE, 
+        color: `hsl(${Math.random()*360},100%,60%)`, 
+        size: Math.random()*4+2 
+    });
 }
 
 document.addEventListener("keydown", e => {
@@ -131,7 +138,6 @@ function update() {
         if(s.isBot) {
             let distToPlayer = Math.hypot(s.x - player.x, s.y - player.y);
             let targetAngle;
-
             if(distToPlayer < 600 && player.alive && Math.random() < diffSetting.botAggro) {
                 targetAngle = Math.atan2(player.y - s.y, player.x - s.x);
             } else {
@@ -143,7 +149,6 @@ function update() {
                 });
                 targetAngle = Math.atan2(target.y - s.y, target.x - s.x);
             }
-
             let diff = targetAngle - s.angle;
             while(diff < -Math.PI) diff += Math.PI*2;
             while(diff > Math.PI) diff -= Math.PI*2;
@@ -152,28 +157,32 @@ function update() {
             s.angle += turnDir;
         }
 
-        let currentSpeed = (isBoosting && !s.isBot) ? s.speed*2 : s.speed;
+        let currentSpeed = (isBoosting && !s.isBot) ? s.speed*1.8 : s.speed;
         s.x += Math.cos(s.angle)*currentSpeed;
         s.y += Math.sin(s.angle)*currentSpeed;
 
         if(s.x<0 || s.x>WORLD_SIZE || s.y<0 || s.y>WORLD_SIZE) s.alive = false;
 
         s.segments.unshift({x: s.x, y: s.y});
-        // Yılanın boyunu 0 puanda kısa olacak şekilde ayarladık
-        if(s.segments.length > (s.actualScore * 2) + 10) s.segments.pop();
+        
+        // Boy uzunluğu formülü: Başlangıçta 5 boğum + her 1 skor için 2 boğum
+        let maxLength = (s.actualScore * 2) + 5;
+        if(s.segments.length > maxLength) s.segments.pop();
 
         particles.forEach((p, i) => {
             if(Math.hypot(s.x-p.x, s.y-p.y) < 25) {
                 particles.splice(i,1); 
-                s.actualScore += 1;
-                if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.actualScore;
+                s.actualScore += 1; // TAM OLARAK 1 PUAN
+                if(!s.isBot) {
+                    document.getElementById("scoreBox").innerText = "Puan: " + s.actualScore;
+                }
                 spawnParticle();
             }
         });
 
         snakes.forEach(other => {
             if(!other.alive) return;
-            other.segments.slice(8).forEach(part => {
+            other.segments.slice(10).forEach(part => {
                 if(Math.hypot(s.x-part.x, s.y-part.y) < 16) s.alive = false;
             });
         });
