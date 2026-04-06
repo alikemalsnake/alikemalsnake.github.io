@@ -2,39 +2,46 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Ali Kemal Admin Snake.io</title>
+<title>Ali Kemal Snake.io - Admin Özel</title>
 <style>
-  body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
+  body { background: #000; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; overflow: hidden; }
   #viewport { width: 100vw; height: 100vh; position: relative; }
-  canvas { background: #050505; position: absolute; border: 5px solid #333; }
+  canvas { background: #050505; position: absolute; border: 5px solid #222; }
 
   /* SKOR TABLOSU - SAĞ ÜSTTE SABİT */
   #leaderboard { 
     position: fixed; top: 20px; right: 20px; 
     background: rgba(0,0,0,0.9); padding: 15px; 
     border: 3px solid #ffd700; border-radius: 15px; 
-    min-width: 220px; z-index: 9999;
+    min-width: 200px; z-index: 9999;
   }
-  #leaderboard h3 { margin: 0 0 10px 0; color: #ffd700; text-align: center; }
-  .row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
+  #leaderboard h3 { margin: 0 0 10px 0; color: #ffd700; text-align: center; border-bottom: 1px solid #444; }
+  .row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
 
-  /* SOL ÜST BİLGİ */
-  #ui { position: fixed; top: 20px; left: 20px; z-index: 9999; }
-  #scoreBox { font-size: 35px; color: #00ff00; font-weight: bold; }
+  /* SOL ÜST BİLGİ PANELİ */
+  #ui { position: fixed; top: 20px; left: 20px; z-index: 9999; pointer-events: none; }
+  #scoreBox { font-size: 32px; color: #00ff00; font-weight: bold; text-shadow: 0 0 10px #00ff00; }
   #godTag { 
-    display: none; color: #ff0000; font-size: 25px; font-weight: bold; 
-    background: white; padding: 5px 10px; border-radius: 5px; margin-top: 10px;
+    display: none; color: white; font-size: 20px; font-weight: bold; 
+    background: #ff0000; padding: 8px 15px; border-radius: 10px; 
+    margin-top: 10px; border: 2px solid white; box-shadow: 0 0 15px #ff0000;
   }
 
-  .screen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10000; background: #111; padding: 40px; border-radius: 20px; text-align: center; border: 5px solid #ffd700; }
-  button { font-size: 25px; padding: 15px 50px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 10px; }
+  /* GİRİŞ EKRANI */
+  .screen { 
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+    z-index: 10000; background: #111; padding: 40px; border-radius: 25px; 
+    text-align: center; border: 5px solid #ffd700; min-width: 300px;
+  }
+  button { font-size: 24px; padding: 15px 40px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 12px; font-weight: bold; }
+  input { font-size: 20px; padding: 12px; border-radius: 10px; margin: 15px; text-align: center; border: 2px solid #ffd700; background: #000; color: white; }
 </style>
 </head>
 <body>
 
 <div id="ui">
     <div id="scoreBox">Puan: 0</div>
-    <div id="godTag">ÖLÜMSÜZ MOD AKTİF 🛡️</div>
+    <div id="godTag">🛡️ ÖLÜMSÜZ MOD AKTİF</div>
 </div>
 
 <div id="leaderboard">
@@ -43,12 +50,11 @@
 </div>
 
 <div id="menu" class="screen">
-  <h1 style="color:#ffd700; font-size: 50px;">SNAKE.IO</h1>
-  <h2 style="color:#00ff00;">HOŞ GELDİN ALİ KEMAL [ADMIN]</h2>
+  <h1 style="color:#ffd700; font-size: 45px; margin-bottom: 10px;">SNAKE.IO</h1>
+  <p style="color:#aaa;">İsmini yaz ve oyuna başla!</p>
+  <input type="text" id="nameInput" placeholder="İsmin nedir?" maxlength="15">
+  <br>
   <button onclick="startGame()">BAŞLAT</button>
-  <p style="color: #aaa; margin-top: 20px;">
-    Yönler: <b>Ok Tuşları</b> | Ölümsüzlük: <b>G Tuşu</b>
-  </p>
 </div>
 
 <div id="viewport"><canvas id="gameCanvas"></canvas></div>
@@ -56,48 +62,66 @@
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const WORLD_SIZE = 3000;
+const WORLD_SIZE = 3500;
 canvas.width = WORLD_SIZE; canvas.height = WORLD_SIZE;
 
-let snakes = [], particles = [], gameActive = false, turnDir = 0, godMode = false;
+let snakes = [], particles = [], gameActive = false, turnDir = 0, godMode = false, isAdmin = false;
 
 function startGame() {
+    let girilenIsim = document.getElementById("nameInput").value.trim();
+    
+    // SADECE ALİ KEMAL ADMİN OLABİLİR
+    if(girilenIsim === "Ali Kemal") {
+        isAdmin = true;
+        girilenIsim = "Ali Kemal [Admin]";
+    } else {
+        isAdmin = false;
+    }
+    
     document.getElementById("menu").style.display = "none";
     gameActive = true;
-    init();
+    init(girilenIsim);
 }
 
-function init() {
+function init(pName) {
     snakes = []; particles = [];
     // Senin yılanın
-    snakes.push({ name: "Ali Kemal [Admin]", color: "#00ff00", isBot: false, alive: true, x: 1500, y: 1500, angle: 0, score: 0, segments: [] });
+    snakes.push({ name: pName, color: isAdmin ? "#00ff00" : "#0099ff", isBot: false, alive: true, x: 1750, y: 1750, angle: 0, score: 0, segments: [] });
     
     // Botlar
-    for(let i=0; i<15; i++) {
-        snakes.push({ name: "Bot_"+i, color: "blue", isBot: true, alive: true, x: Math.random()*3000, y: Math.random()*3000, angle: Math.random()*7, score: 0, segments: [] });
+    const botNames = ["Efe", "Zeynep", "Kerem", "Mert", "Selin", "Arda", "Can", "Elif", "Deniz", "Kaan"];
+    for(let i=0; i<25; i++) {
+        snakes.push({ 
+            name: botNames[i % botNames.length] + "_" + (i+1), 
+            color: `hsl(${Math.random()*360}, 70%, 50%)`, 
+            isBot: true, alive: true, x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE, 
+            angle: Math.random()*Math.PI*2, score: 0, segments: [] 
+        });
     }
-    for(let i=0; i<500; i++) spawnParticle();
+    for(let i=0; i<700; i++) spawnParticle();
     requestAnimationFrame(loop);
 }
 
 function spawnParticle() {
-    particles.push({ x: Math.random()*3000, y: Math.random()*3000, color: "yellow" });
+    particles.push({ x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE, color: `hsl(${Math.random()*360}, 100%, 70%)` });
 }
 
-// TUŞLARIN KESİN ÇALIŞMASI İÇİN YENİ SİSTEM
+// TUŞ KONTROLLERİ (G Tuşu Sadece Admin İçin)
 window.onkeydown = function(e) {
     let key = e.key.toLowerCase();
-    if(key === "arrowleft") turnDir = -0.1;
-    if(key === "arrowright") turnDir = 0.1;
+    if(key === "arrowleft" || key === "j") turnDir = -0.12;
+    if(key === "arrowright" || key === "l") turnDir = 0.12;
     
-    // G TUŞU KONTROLÜ
-    if(key === "g") {
+    // G tuşu kontrolü - Sadece Ali Kemal Admin ise çalışır
+    if(key === "g" && isAdmin) {
         godMode = !godMode;
         document.getElementById("godTag").style.display = godMode ? "block" : "none";
-        console.log("Ölümsüzlük:", godMode);
     }
 };
-window.onkeyup = function() { turnDir = 0; };
+window.onkeyup = function(e) { 
+    let key = e.key.toLowerCase();
+    if(key === "arrowleft" || key === "arrowright" || key === "j" || key === "l") turnDir = 0; 
+};
 
 function loop() {
     if(!gameActive) return;
@@ -108,11 +132,11 @@ function loop() {
 }
 
 function updateBoard() {
-    let sorted = [...snakes].sort((a,b) => b.score - a.score).slice(0, 5);
+    let sorted = [...snakes].filter(s => s.alive).sort((a,b) => b.score - a.score).slice(0, 6);
     let html = "";
     sorted.forEach((s, i) => {
-        let c = s.name.includes("Admin") ? "#ffd700" : "white";
-        html += `<div class="row" style="color:${c}"><span>${i+1}. ${s.name}</span><span>${s.score}</span></div>`;
+        let isAdmRow = s.name.includes("[Admin]");
+        html += `<div class="row" style="color:${isAdmRow ? '#ffd700' : 'white'}"><span>${i+1}. ${s.name}</span><span>${s.score}</span></div>`;
     });
     document.getElementById("leaderRows").innerHTML = html;
 }
@@ -120,25 +144,21 @@ function updateBoard() {
 function update() {
     snakes.forEach(s => {
         if(!s.alive) return;
-        if(s.isBot) {
-            s.angle += (Math.random() - 0.5) * 0.2;
-        } else {
-            s.angle += turnDir;
-        }
+        if(s.isBot) { s.angle += (Math.random() - 0.5) * 0.15; } else { s.angle += turnDir; }
         
-        s.x += Math.cos(s.angle) * 5;
-        s.y += Math.sin(s.angle) * 5;
+        s.x += Math.cos(s.angle) * 5.5;
+        s.y += Math.sin(s.angle) * 5.5;
 
-        // Kenarlardan Geçiş (Ölümsüzlük)
-        if(s.x < 0) s.x = 3000; if(s.x > 3000) s.x = 0;
-        if(s.y < 0) s.y = 3000; if(s.y > 3000) s.y = 0;
+        // Kenarlardan geçiş (Admin ölümsüzlük kapalıyken bile kenarlardan ölmez)
+        if(s.x < 0) s.x = WORLD_SIZE; if(s.x > WORLD_SIZE) s.x = 0;
+        if(s.y < 0) s.y = WORLD_SIZE; if(s.y > WORLD_SIZE) s.y = 0;
 
         s.segments.unshift({x: s.x, y: s.y});
-        if(s.segments.length > s.score + 5) s.segments.pop();
+        if(s.segments.length > s.score + 10) s.segments.pop();
 
         // Yem yeme
         particles.forEach((p, i) => {
-            if(Math.hypot(s.x-p.x, s.y-p.y) < 20) {
+            if(Math.hypot(s.x-p.x, s.y-p.y) < 22) {
                 particles.splice(i, 1);
                 s.score++;
                 if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.score;
@@ -146,14 +166,14 @@ function update() {
             }
         });
 
-        // Çarpışma (Admin ölümsüzlüğü burada devreye girer)
+        // Çarpışma
         snakes.forEach(other => {
             if(s === other || !other.alive) return;
-            other.segments.forEach(p => {
-                if(Math.hypot(s.x - p.x, s.y - p.y) < 10) {
+            other.segments.slice(2).forEach(p => {
+                if(Math.hypot(s.x - p.x, s.y - p.y) < 12) {
                     if(s.isBot || !godMode) {
                         s.alive = false;
-                        if(!s.isBot) location.reload(); // Ölünce yenile
+                        if(!s.isBot) setTimeout(() => location.reload(), 1500); // Ölünce yeniden başlar
                     }
                 }
             });
@@ -162,25 +182,48 @@ function update() {
 }
 
 function draw() {
-    ctx.clearRect(0, 0, 3000, 3000);
+    ctx.clearRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+    
+    // Izgara çizgileri
+    ctx.strokeStyle = "#151515";
+    for(let i=0; i<WORLD_SIZE; i+=100) {
+        ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,WORLD_SIZE); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(WORLD_SIZE,i); ctx.stroke();
+    }
+
     particles.forEach(p => {
         ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, 7); ctx.fill();
     });
+
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
-        s.segments.forEach(p => {
-            ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, 7); ctx.fill();
+        
+        // Admin yılanı parlaması
+        if(s.name.includes("Admin")) { 
+            ctx.shadowBlur = godMode ? 20 : 10; 
+            ctx.shadowColor = godMode ? "red" : "green"; 
+        }
+        
+        s.segments.forEach((p, index) => {
+            ctx.beginPath(); 
+            ctx.arc(p.x, p.y, index === 0 ? 16 : 13, 0, 7); 
+            ctx.fill();
         });
+        
+        ctx.shadowBlur = 0;
         ctx.fillStyle = s.name.includes("Admin") ? "#ffd700" : "white";
-        ctx.fillText(s.name, s.x - 20, s.y - 20);
+        ctx.font = "bold 15px Arial";
+        ctx.fillText(s.name, s.x - 30, s.y - 25);
     });
 
     // Kamera Takibi
     let me = snakes[0];
-    canvas.style.left = (window.innerWidth/2 - me.x) + "px";
-    canvas.style.top = (window.innerHeight/2 - me.y) + "px";
+    if(me) {
+        canvas.style.left = (window.innerWidth/2 - me.x) + "px";
+        canvas.style.top = (window.innerHeight/2 - me.y) + "px";
+    }
 }
 </script>
 </body>
