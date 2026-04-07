@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ali Kemal Snake.io - Sunucu Sistemi</title>
+<title>Ali Kemal Snake.io - Fix Edition</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   canvas { display: block; background: #080808; }
@@ -27,7 +27,7 @@
 <div id="ui">
     <div id="scoreBox">Puan: 0</div>
     <div id="godTag">🛡️ ÖLÜMSÜZ MOD AKTİF</div>
-    <div id="serverInfo">Sunucu Durumu: Bağlanıyor...</div>
+    <div id="serverInfo">Sunucu: Bekleniyor...</div>
 </div>
 
 <div id="leaderboard">
@@ -64,7 +64,7 @@ let snakes = [], particles = [], gameActive = false, turnDir = 0, godMode = fals
 let camera = { x: 0, y: 0 };
 let currentSpeed = 6.5;
 let deathTime = null;
-let currentBotPool = []; // Aktif sunucudaki botların isim listesi
+let currentBotPool = [];
 
 const allPossibleNames = ["Kerem", "Efe", "Zeynep", "Mert", "Arda", "Can", "Elif", "Deniz", "Selim", "Melis", "Emre", "Burak", "Selin", "Kaan", "Umut", "Bora", "Demir", "Nil", "Poyraz", "Ada", "Ali", "Veli", "Ece", "Sarp", "Mira", "Ayaz", "Taylan", "Ceren", "Doruk", "Buse", "Kuzey", "Güney", "Toprak", "Yağmur"];
 
@@ -73,7 +73,6 @@ window.onresize = resize; resize();
 
 function getRandomColor() { return `hsl(${Math.random() * 360}, 85%, 60%)`; }
 
-// Yeni bir bot havuzu oluştur (Sunucu değiştiğinde çağrılır)
 function refreshBotPool() {
     let pool = [];
     let shuffled = [...allPossibleNames].sort(() => 0.5 - Math.random());
@@ -96,7 +95,8 @@ function createBotFromPool(index) {
         state: "explore",
         targetPos: { x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE },
         aiUpdateTimer: 0,
-        bravery: Math.random()
+        bravery: Math.random(),
+        stuckTimer: 0 // Kendi etrafında dönme kontrolü için
     };
 }
 
@@ -105,13 +105,10 @@ function startGame() {
     let rawName = document.getElementById("nameInput").value.trim();
     currentSpeed = parseFloat(document.getElementById("difficulty").value);
 
-    // SUNUCU KONTROLÜ
     if (!deathTime || (now - deathTime) > 50000) {
-        // 50 saniye geçti veya ilk oyun: Yeni sunucu/isimler
         currentBotPool = refreshBotPool();
-        document.getElementById("serverInfo").innerText = "Sunucu: Yeni Dünya (#" + Math.floor(Math.random()*999) + ")";
+        document.getElementById("serverInfo").innerText = "Sunucu: Yeni Dünya";
     } else {
-        // 50 saniye geçmedi: Aynı isimlerle devam
         document.getElementById("serverInfo").innerText = "Sunucu: Aynı Dünyaya Dönüldü";
     }
 
@@ -131,12 +128,7 @@ function startGame() {
 function init(pName) {
     snakes = []; particles = [];
     snakes.push({ name: pName, color: isAdmin ? "#00ff00" : getRandomColor(), x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, score: 0, segments: [], alive: true, isBot: false });
-    
-    // Mevcut havuzdaki botları oluştur
-    for(let i=0; i<currentBotPool.length; i++) {
-        snakes.push(createBotFromPool(i));
-    }
-    
+    for(let i=0; i<currentBotPool.length; i++) snakes.push(createBotFromPool(i));
     for(let i=0; i<1100; i++) spawnParticle();
     gameActive = true; requestAnimationFrame(loop);
 }
@@ -158,11 +150,6 @@ window.addEventListener('keydown', (e) => {
     if(k === "g") toggleGodMode();
 });
 window.addEventListener('keyup', () => turnDir = 0);
-document.getElementById("leftBtn").ontouchstart = (e) => { e.preventDefault(); turnDir = -0.12; };
-document.getElementById("leftBtn").ontouchend = () => turnDir = 0;
-document.getElementById("rightBtn").ontouchstart = (e) => { e.preventDefault(); turnDir = 0.12; };
-document.getElementById("rightBtn").ontouchend = () => turnDir = 0;
-document.getElementById("mobileG").ontouchstart = (e) => { e.preventDefault(); toggleGodMode(); };
 
 function loop() { if(!gameActive) return; update(); draw(); requestAnimationFrame(loop); }
 
@@ -173,12 +160,12 @@ function update() {
         let s = snakes[i];
         if(!s.alive) {
             if(s.isBot) { 
-                let dropAmount = Math.min(s.segments.length, 45);
+                let dropAmount = Math.min(s.segments.length, 30);
                 for(let k = 0; k < dropAmount; k++) {
                     let seg = s.segments[k*2] || {x: s.x, y: s.y};
                     particles.push({ x: seg.x + (Math.random()-0.5)*60, y: seg.y + (Math.random()-0.5)*60, color: s.color, size: 7 });
                 }
-                snakes[i] = createBotFromPool(i); // Aynı havuzdan yeni bot
+                snakes[i] = createBotFromPool(i);
             }
             continue; 
         }
@@ -186,44 +173,61 @@ function update() {
         if (s.isBot) {
             s.aiUpdateTimer--;
             if(s.aiUpdateTimer <= 0) {
-                let viewDist = 500;
+                let viewDist = 600;
                 let visibleParticles = particles.filter(p => Math.hypot(s.x-p.x, s.y-p.y) < viewDist);
                 let visibleEnemies = snakes.filter(os => os !== s && os.alive && Math.hypot(s.x-os.x, s.y-os.y) < viewDist);
 
-                let attackRisk = Math.random() < (s.bravery * 0.45); 
-
-                if(visibleEnemies.length > 0 && (attackRisk || visibleEnemies[0].score < s.score)) {
-                    let targetEnemy = visibleEnemies[0];
-                    s.targetPos = { x: targetEnemy.x, y: targetEnemy.y };
-                    s.state = "attack";
+                // KARAR VERME
+                if(visibleEnemies.length > 0 && Math.random() < 0.3) {
+                    s.targetPos = { x: visibleEnemies[0].x, y: visibleEnemies[0].y };
                 } else if(visibleParticles.length > 0) {
-                    let nearestP = visibleParticles[0];
-                    s.targetPos = { x: nearestP.x, y: nearestP.y };
-                    s.state = "eat";
+                    s.targetPos = { x: visibleParticles[0].x, y: visibleParticles[0].y };
                 } else {
-                    if(Math.hypot(s.x - s.targetPos.x, s.y - s.targetPos.y) < 150) {
-                        s.targetPos = { x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE };
-                    }
-                    s.state = "explore";
+                    s.targetPos = { x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE };
                 }
-                s.aiUpdateTimer = 25 + Math.random() * 35;
+                s.aiUpdateTimer = 30 + Math.random() * 40;
             }
 
             let desiredAngle = Math.atan2(s.targetPos.y - s.y, s.targetPos.x - s.x);
+            
+            // --- SAÇMALAMAYI ENGELLEME SİSTEMİ ---
+            
+            // 1. Kendi vücuduna çarpmaktan kaç
+            s.segments.forEach((seg, idx) => {
+                if(idx > 15 && Math.hypot(s.x - seg.x, s.y - seg.y) < 50) {
+                    desiredAngle += 1.5; // Kendi kuyruğunu görünce sert dön
+                    s.stuckTimer = 0;
+                }
+            });
+
+            // 2. Başkalarına çarpmaktan kaç
             snakes.forEach(other => {
-                if(!other.alive) return;
+                if(!other.alive || s === other) return;
                 other.segments.forEach((seg, idx) => {
-                    if (idx % 12 === 0 && Math.hypot(s.x - seg.x, s.y - seg.y) < 55) {
-                        desiredAngle += 0.9; 
+                    if (idx % 8 === 0 && Math.hypot(s.x - seg.x, s.y - seg.y) < 65) {
+                        desiredAngle += 1.0; 
+                        s.stuckTimer = 0;
                     }
                 });
             });
 
+            // 3. Daire kilidi kontrolü (Sürekli dönüyorsa rotayı boz)
+            s.stuckTimer++;
+            if(s.stuckTimer > 200) { 
+                s.angle += 1.0; 
+                s.stuckTimer = 0; 
+                s.targetPos = { x: WORLD_SIZE/2, y: WORLD_SIZE/2 };
+            }
+
             let diff = desiredAngle - s.angle;
             while (diff < -Math.PI) diff += Math.PI * 2;
             while (diff > Math.PI) diff -= Math.PI * 2;
-            s.angle += diff * 0.14;
-            if (s.x < 100 || s.x > WORLD_SIZE - 100 || s.y < 100 || s.y > WORLD_SIZE - 100) s.angle += 0.3;
+            s.angle += diff * 0.12;
+
+            // Kenar kontrolü
+            if (s.x < 150 || s.x > WORLD_SIZE - 150 || s.y < 150 || s.y > WORLD_SIZE - 150) {
+                s.angle += 0.2;
+            }
         } else {
             s.angle += turnDir;
         }
@@ -233,8 +237,8 @@ function update() {
 
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
             if(!s.isBot && godMode) {
-                if(s.x < 0) s.x = 0; if(s.x > WORLD_SIZE) s.x = WORLD_SIZE;
-                if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
+                s.x = Math.max(0, Math.min(WORLD_SIZE, s.x));
+                s.y = Math.max(0, Math.min(WORLD_SIZE, s.y));
             } else {
                 s.alive = false;
                 if(!s.isBot) handlePlayerDeath();
@@ -244,6 +248,7 @@ function update() {
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 15) s.segments.pop();
 
+        // Yeme
         for(let j = particles.length - 1; j >= 0; j--) {
             let p = particles[j];
             if(Math.hypot(s.x - p.x, s.y - p.y) < 30) {
@@ -254,6 +259,7 @@ function update() {
             }
         }
 
+        // Çarpışma ölümü
         snakes.forEach(other => {
             if(!other.alive || s === other) return;
             other.segments.forEach((p, idx) => {
@@ -279,7 +285,7 @@ function handlePlayerDeath() {
     gameActive = false;
     deathTime = Date.now();
     document.getElementById("menu").style.display = "block";
-    document.getElementById("timerMsg").innerText = "Aynı sunucuya dönmek için 50 saniyen var!";
+    document.getElementById("timerMsg").innerText = "Aynı sunucu için son 50 saniye!";
 }
 
 function draw() {
@@ -290,9 +296,8 @@ function draw() {
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
-        if(!s.isBot && godMode) { ctx.shadowBlur = 20; ctx.shadowColor = "white"; }
         s.segments.forEach((seg, i) => { ctx.beginPath(); ctx.arc(seg.x, seg.y, i === 0 ? 18 : 14, 0, Math.PI*2); ctx.fill(); });
-        ctx.shadowBlur = 0; ctx.fillStyle = "white"; ctx.font = "bold 14px Arial"; ctx.fillText(s.name, s.x - 25, s.y - 25);
+        ctx.fillStyle = "white"; ctx.font = "bold 14px Arial"; ctx.fillText(s.name, s.x - 25, s.y - 25);
     });
     ctx.restore();
 }
