@@ -3,20 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ali Kemal Snake.io - Sabit Hız</title>
+<title>Ali Kemal Snake.io - Zero Variation</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   canvas { display: block; background: #050505; }
   #ui { position: fixed; top: 10px; left: 10px; z-index: 100; pointer-events: none; }
-  #scoreBox { font-size: 25px; color: #00ff00; font-weight: bold; text-shadow: 2px 2px #000; }
-  #godTag { display: none; color: white; background: #007bff; padding: 5px 15px; border-radius: 8px; margin-top: 5px; font-weight: bold; border: 2px solid white; font-size: 14px; box-shadow: 0 0 15px #fff; }
+  #scoreBox { font-size: 28px; color: #00ff00; font-weight: bold; text-shadow: 2px 2px #000; }
+  #godTag { display: none; color: white; background: #007bff; padding: 5px 15px; border-radius: 8px; margin-top: 5px; font-weight: bold; border: 2px solid white; font-size: 14px; box-shadow: 0 0 20px #fff; }
   #leaderboard { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.85); padding: 12px; border: 2px solid #ffd700; border-radius: 12px; min-width: 170px; }
   .row { display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; margin-bottom: 3px; }
-  #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: rgba(15, 15, 15, 0.98); padding: 30px; border-radius: 25px; text-align: center; border: 5px solid #ffd700; width: 85%; max-width: 350px; }
-  input { font-size: 18px; padding: 12px; border-radius: 10px; margin: 10px; text-align: center; width: 80%; background: #000; color: #fff; border: 2px solid #444; }
-  button#startBtn { font-size: 24px; padding: 15px 50px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 15px; font-weight: bold; margin-top: 15px; }
-  #controls { position: fixed; bottom: 30px; left: 0; right: 0; display: flex; justify-content: space-around; z-index: 150; }
-  .btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.1); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; border: 2px solid rgba(255,255,255,0.2); user-select: none; }
+  #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: rgba(15, 15, 15, 0.98); padding: 35px; border-radius: 25px; text-align: center; border: 5px solid #ffd700; width: 85%; max-width: 350px; }
+  input { font-size: 18px; padding: 12px; border-radius: 10px; margin: 10px; text-align: center; width: 85%; background: #111; color: #fff; border: 2px solid #444; outline: none; }
+  button#startBtn { font-size: 26px; padding: 15px 60px; background: #00c853; color: white; border: none; cursor: pointer; border-radius: 15px; font-weight: bold; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,200,83,0.4); }
+  #controls { position: fixed; bottom: 40px; left: 0; right: 0; display: flex; justify-content: space-around; z-index: 150; }
+  .btn { width: 85px; height: 85px; background: rgba(255, 255, 255, 0.1); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 35px; border: 2px solid rgba(255,255,255,0.2); user-select: none; }
 </style>
 </head>
 <body>
@@ -30,8 +30,8 @@
 
 <div id="menu">
   <h1 style="color:#ffd700;">SNAKE.IO</h1>
-  <input type="text" id="nameInput" placeholder="Ali Kemal" maxlength="12">
-  <button id="startBtn" onclick="startGame()">BAŞLAT</button>
+  <input type="text" id="nameInput" placeholder="" maxlength="15">
+  <button id="startBtn" onclick="startGame()">OYNA</button>
 </div>
 
 <div id="controls">
@@ -44,40 +44,41 @@
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const WORLD_SIZE = 3500;
-const CONSTANT_SPEED = 7; // HIZ BURADA SABİTLENDİ (Ne hızlı, ne yavaş)
+const WORLD_SIZE = 3600;
+
+// HIZ BURADA TEK BİR DEĞERDİR VE ASLA DEĞİŞMEZ
+const CONSTANT_SPEED = 8; 
 
 let snakes = [], particles = [], turnDir = 0, godMode = false, isAdmin = false;
 let camera = { x: 0, y: 0 };
-let currentBotNames = ["Kerem", "Efe", "Zeynep", "Mert", "Arda", "Can", "Elif", "Deniz", "Selim", "Melis"];
+let botNames = ["Efe", "Can", "Arda", "Zeynep", "Mert", "Nil", "Sarp", "Mira", "Ada", "Kaan"];
 
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.onresize = resize; resize();
 
 function spawnParticle() {
-    return { x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE, color: `hsl(${Math.random()*360}, 80%, 60%)` };
+    return { x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE, color: `hsl(${Math.random()*360}, 85%, 65%)` };
 }
 
 function spawnBot() {
     return {
-        name: currentBotNames[Math.floor(Math.random()*currentBotNames.length)] + "_" + Math.floor(Math.random()*99),
-        color: `hsl(${Math.random()*360}, 70%, 50%)`,
-        x: Math.random()*(WORLD_SIZE-200)+100, y: Math.random()*(WORLD_SIZE-200)+100,
+        name: botNames[Math.floor(Math.random()*botNames.length)] + "_" + Math.floor(Math.random()*99),
+        color: `hsl(${Math.random()*360}, 75%, 55%)`,
+        x: Math.random()*(WORLD_SIZE-100)+50, y: Math.random()*(WORLD_SIZE-100)+50,
         angle: Math.random()*Math.PI*2, score: 20, segments: [], alive: true, isBot: true, aiTimer: 0
     };
 }
 
-// Başlangıç Kurulumu
 for(let i=0; i<25; i++) snakes.push(spawnBot());
-for(let i=0; i<1000; i++) particles.push(spawnParticle());
+for(let i=0; i<1100; i++) particles.push(spawnParticle());
 
 function startGame() {
-    let name = document.getElementById("nameInput").value.trim() || "Oyuncu";
+    let name = document.getElementById("nameInput").value.trim();
     if(name === "Ali Kemal") isAdmin = true;
     
     snakes = snakes.filter(s => s.isBot);
     snakes.push({
-        name: isAdmin ? "Ali Kemal [Admin]" : name,
+        name: name || "Oyuncu",
         color: isAdmin ? "#00ff00" : "#ff5500",
         x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, score: 0, segments: [], alive: true, isBot: false
     });
@@ -87,7 +88,6 @@ function startGame() {
 function update() {
     let player = snakes.find(s => !s.isBot && s.alive);
     
-    // Kamera Takibi
     if(player) {
         camera.x = player.x - canvas.width/2;
         camera.y = player.y - canvas.height/2;
@@ -106,23 +106,21 @@ function update() {
             s.aiTimer--;
             if(s.aiTimer <= 0) {
                 let target = particles[Math.floor(Math.random()*particles.length)];
-                if(player && player.score < 150 && Math.random() < 0.2) target = player;
                 s.targetAngle = Math.atan2(target.y - s.y, target.x - s.x);
                 s.aiTimer = 40 + Math.random()*40;
             }
             let diff = s.targetAngle - s.angle;
             while(diff < -Math.PI) diff += Math.PI*2;
             while(diff > Math.PI) diff -= Math.PI*2;
-            s.angle += diff * 0.08;
+            s.angle += diff * 0.09;
         } else {
             s.angle += turnDir;
         }
 
-        // HIZ SABİTLEME
+        // HIZ ASLA DEĞİŞMEZ - HERKES İÇİN AYNI
         s.x += Math.cos(s.angle) * CONSTANT_SPEED;
         s.y += Math.sin(s.angle) * CONSTANT_SPEED;
 
-        // SINIR KONTROLÜ (Kırmızı Lazer Duvar)
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
             if(!s.isBot && godMode) {
                 s.x = Math.max(0, Math.min(WORLD_SIZE, s.x));
@@ -136,21 +134,19 @@ function update() {
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 12) s.segments.pop();
 
-        // Yemek Yeme
         particles.forEach((p, i) => {
-            if(Math.hypot(s.x - p.x, s.y - p.y) < 25) {
+            if(Math.hypot(s.x - p.x, s.y - p.y) < 26) {
                 s.score += 1;
                 particles[i] = spawnParticle();
                 if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.score;
             }
         });
 
-        // Çarpışma Ölümü
         snakes.forEach(other => {
             if(!other.alive || s === other) return;
             other.segments.forEach((seg, si) => {
                 if(si > 4 && Math.hypot(s.x - seg.x, s.y - seg.y) < 18) {
-                    if(!s.isBot && godMode) { other.alive = false; s.score += 15; }
+                    if(!s.isBot && godMode) { other.alive = false; s.score += 10; }
                     else {
                         s.alive = false;
                         if(!s.isBot) document.getElementById("menu").style.display = "block";
@@ -161,7 +157,7 @@ function update() {
     });
 
     let top = snakes.filter(s => s.alive).sort((a,b) => b.score - a.score).slice(0, 5);
-    let html = "<b>TOP 5 LİDERLER</b><br>";
+    let html = "<b>LİDERLER</b><br>";
     top.forEach((ts, i) => html += `<div class="row" style="color:${ts.color}">${i+1}. ${ts.name} <span>${ts.score}</span></div>`);
     document.getElementById("leaderRows").innerHTML = html;
 }
@@ -170,18 +166,18 @@ function draw() {
     ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save(); ctx.translate(-camera.x, -camera.y);
 
-    // ARKA PLAN IZGARA
+    // KILAVUZ ÇİZGİLERİ
     ctx.strokeStyle = "#111"; ctx.lineWidth = 2;
     for(let i=0; i<=WORLD_SIZE; i+=250) {
         ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,WORLD_SIZE); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(WORLD_SIZE,i); ctx.stroke();
     }
 
-    // KIRMIZI LAZER SINIRLAR (Görünürlük artırıldı)
-    ctx.strokeStyle = "#ff0000"; ctx.lineWidth = 15;
-    ctx.shadowBlur = 15; ctx.shadowColor = "red";
+    // KIRMIZI LAZER SINIR
+    ctx.strokeStyle = "#ff0000"; ctx.lineWidth = 20;
+    ctx.shadowBlur = 20; ctx.shadowColor = "red";
     ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
-    ctx.shadowBlur = 0; // Sınır parlaması bitti
+    ctx.shadowBlur = 0;
 
     particles.forEach(p => {
         ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
@@ -190,16 +186,15 @@ function draw() {
     snakes.forEach(s => {
         if(!s.alive) return;
 
-        // BEYAZ KALKAN IŞILTISI
         if(!s.isBot && godMode) {
-            ctx.shadowBlur = 25; ctx.shadowColor = "white";
-            ctx.strokeStyle = "rgba(255,255,255,1)"; ctx.lineWidth = 6;
-            ctx.beginPath(); ctx.arc(s.x, s.y, 25, 0, Math.PI*2); ctx.stroke();
+            ctx.shadowBlur = 30; ctx.shadowColor = "white";
+            ctx.strokeStyle = "white"; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.arc(s.x, s.y, 28, 0, Math.PI*2); ctx.stroke();
         }
 
         ctx.fillStyle = s.color;
         s.segments.forEach((seg, i) => {
-            ctx.beginPath(); ctx.arc(seg.x, seg.y, i===0 ? 20 : 15, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(seg.x, seg.y, i===0 ? 21 : 16, 0, Math.PI*2); ctx.fill();
             if(!s.isBot && godMode) { ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke(); }
         });
         
@@ -210,10 +205,9 @@ function draw() {
     ctx.restore();
 }
 
-// Tuş Kontrolleri
 window.addEventListener('keydown', e => {
-    if(e.key === "ArrowLeft") turnDir = -0.1;
-    if(e.key === "ArrowRight") turnDir = 0.1;
+    if(e.key === "ArrowLeft") turnDir = -0.11;
+    if(e.key === "ArrowRight") turnDir = 0.11;
     if(e.key.toLowerCase() === "g" && isAdmin) {
         godMode = !godMode;
         document.getElementById("godTag").style.display = godMode ? "block" : "none";
@@ -221,11 +215,9 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', () => turnDir = 0);
 
-// Mobil Kontroller
-document.getElementById("leftBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = -0.1; });
-document.getElementById("rightBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = 0.1; });
-document.getElementById("leftBtn").addEventListener('touchend', () => turnDir = 0);
-document.getElementById("rightBtn").addEventListener('touchend', () => turnDir = 0);
+document.getElementById("leftBtn").ontouchstart = (e) => { e.preventDefault(); turnDir = -0.11; };
+document.getElementById("rightBtn").ontouchstart = (e) => { e.preventDefault(); turnDir = 0.11; };
+document.getElementById("leftBtn").ontouchend = document.getElementById("rightBtn").ontouchend = () => turnDir = 0;
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
 loop();
