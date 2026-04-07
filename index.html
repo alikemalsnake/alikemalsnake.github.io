@@ -13,7 +13,10 @@
   #leaderboard { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.85); padding: 12px; border: 2px solid #ffd700; border-radius: 12px; min-width: 160px; }
   .row { display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; margin-bottom: 3px; }
   #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: rgba(10, 10, 10, 0.98); padding: 30px; border-radius: 25px; text-align: center; border: 4px solid #ffd700; width: 85%; max-width: 350px; }
+  
+  /* AD GİR KUTUSU */
   input { font-size: 18px; padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; width: 85%; background: #111; color: #fff; border: 2px solid #333; outline: none; }
+  
   .diff-box { display: flex; flex-direction: column; gap: 10px; }
   .diff-btn { padding: 14px; border-radius: 12px; border: none; font-weight: bold; font-size: 17px; cursor: pointer; color: white; transition: 0.2s; }
   .easy { background: #28a745; }
@@ -34,7 +37,7 @@
 
 <div id="menu">
   <h1 style="color:#ffd700; margin-top: 0;">SNAKE.IO</h1>
-  <input type="text" id="nameInput" placeholder="" maxlength="12">
+  <input type="text" id="nameInput" placeholder="AD GİR" maxlength="12">
   <div class="diff-box">
     <button class="diff-btn easy" onclick="startGame('easy')">KOLAY</button>
     <button class="diff-btn medium" onclick="startGame('medium')">ORTA</button>
@@ -62,11 +65,13 @@ let botNames = ["Efe", "Can", "Arda", "Zeynep", "Mert", "Nil", "Sarp", "Mira", "
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.onresize = resize; resize();
 
+// DAHA DOĞAL YEM DAĞILIMI
 function spawnParticle(x = null, y = null, color = null) {
     return { 
         x: x ?? Math.random() * WORLD_SIZE, 
         y: y ?? Math.random() * WORLD_SIZE, 
-        color: color ?? `hsl(${Math.random() * 360}, 90%, 60%)` 
+        color: color ?? `hsl(${Math.random() * 360}, 90%, 60%)`,
+        size: Math.random() * 3 + 4 // Yem boyutları biraz farklı olsun
     };
 }
 
@@ -79,8 +84,9 @@ function spawnBot() {
     };
 }
 
-for(let i=0; i<30; i++) snakes.push(spawnBot());
-for(let i=0; i<1100; i++) particles.push(spawnParticle());
+// Başlangıç yemlerini oluştur (İp gibi dizilmemesi için döngü güncellendi)
+for(let i=0; i<25; i++) snakes.push(spawnBot());
+for(let i=0; i<800; i++) particles.push(spawnParticle());
 
 function toggleGod() {
     if(!isAdmin) return; 
@@ -88,14 +94,17 @@ function toggleGod() {
     document.getElementById("adminToggle").style.background = godMode ? "#28a745" : "#007bff";
 }
 
-// YENİ: Yılan ölünce yemek saçma fonksiyonu
+// GANİMET SAÇILMASI (Snake.io tarzı dairesel patlama)
 function dropLoot(snake) {
-    // Yılanın her 2 puanı için 1 tane büyük yem bırak (çok kasmaması için sınırladık)
-    let lootAmount = Math.floor(snake.score / 2) + 5; 
-    for(let i = 0; i < lootAmount; i++) {
-        if(snake.segments[i]) {
-            particles.push(spawnParticle(snake.segments[i].x, snake.segments[i].y, snake.color));
-        }
+    let lootCount = Math.floor(snake.score / 1.5) + 8;
+    for(let i = 0; i < lootCount; i++) {
+        // Segmenlerden birini rastgele seçip etrafına saç
+        let seg = snake.segments[Math.floor(Math.random() * snake.segments.length)] || snake;
+        let angle = Math.random() * Math.PI * 2;
+        let dist = Math.random() * 60; // 60 piksellik bir alana yay
+        let lx = seg.x + Math.cos(angle) * dist;
+        let ly = seg.y + Math.sin(angle) * dist;
+        particles.push(spawnParticle(lx, ly, snake.color));
     }
 }
 
@@ -131,10 +140,7 @@ function update() {
     if(player) { camera.x = player.x - canvas.width/2; camera.y = player.y - canvas.height/2; }
 
     snakes.forEach(s => {
-        if(!s.alive) { 
-            if(s.isBot) { Object.assign(s, spawnBot()); s.segments = []; } 
-            return; 
-        }
+        if(!s.alive) { if(s.isBot) { Object.assign(s, spawnBot()); s.segments = []; } return; }
 
         if(s.isBot) {
             s.aiTimer--;
@@ -142,9 +148,9 @@ function update() {
                 if(gameDiff === 'hard' && player) s.targetAngle = Math.atan2(player.y - s.y, player.x - s.x);
                 else {
                     let target = particles[Math.floor(Math.random()*particles.length)];
-                    s.targetAngle = Math.atan2(target.y - s.y, target.x - s.x);
+                    if(target) s.targetAngle = Math.atan2(target.y - s.y, target.x - s.x);
                 }
-                s.aiTimer = 25;
+                s.aiTimer = 30;
             }
             let diff = s.targetAngle - s.angle;
             while(diff < -Math.PI) diff += Math.PI*2;
@@ -156,10 +162,11 @@ function update() {
         s.y += Math.sin(s.angle) * moveSpeed;
 
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
-            if(!s.isBot && godMode && isAdmin) { s.x = Math.max(0, Math.min(WORLD_SIZE, s.x)); s.y = Math.max(0, Math.min(WORLD_SIZE, s.y)); }
-            else { 
-                s.alive = false; 
-                dropLoot(s); // Ölünce yem bırak
+            if(!s.isBot && godMode && isAdmin) { 
+                s.x = Math.max(0, Math.min(WORLD_SIZE, s.x)); 
+                s.y = Math.max(0, Math.min(WORLD_SIZE, s.y)); 
+            } else { 
+                s.alive = false; dropLoot(s);
                 if(!s.isBot) document.getElementById("menu").style.display = "block"; 
             }
         }
@@ -167,29 +174,22 @@ function update() {
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 15) s.segments.pop();
 
-        particles.forEach((p, i) => {
+        for(let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
             if(Math.hypot(s.x - p.x, s.y - p.y) < 26) {
-                s.score += 1; 
-                if(particles.length > 1200) particles.splice(i, 1); // Çok fazla yem birikmesini önle
-                else particles[i] = spawnParticle();
+                s.score += 1;
+                particles.splice(i, 1);
+                if(particles.length < 900) particles.push(spawnParticle());
                 if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.score;
             }
-        });
+        }
 
         snakes.forEach(other => {
             if(!other.alive || s === other) return;
             other.segments.forEach((seg, si) => {
                 if(si > 5 && Math.hypot(s.x - seg.x, s.y - seg.y) < 18) {
-                    if(!s.isBot && godMode && isAdmin) { 
-                        other.alive = false; 
-                        dropLoot(other); // Ölen bottan yem çıksın
-                        s.score += 5; 
-                    }
-                    else { 
-                        s.alive = false; 
-                        dropLoot(s); // Ölen oyuncudan yem çıksın
-                        if(!s.isBot) document.getElementById("menu").style.display = "block"; 
-                    }
+                    if(!s.isBot && godMode && isAdmin) { other.alive = false; dropLoot(other); s.score += 5; }
+                    else { s.alive = false; dropLoot(s); if(!s.isBot) document.getElementById("menu").style.display = "block"; }
                 }
             });
         });
@@ -204,31 +204,37 @@ function update() {
 function draw() {
     ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save(); ctx.translate(-camera.x, -camera.y);
-    ctx.strokeStyle = "red"; ctx.lineWidth = 15; ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
-    particles.forEach(p => { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill(); });
+
+    // Izgara çizgilerini daha yumuşak yap
+    ctx.strokeStyle = "#111"; ctx.lineWidth = 2;
+    for(let x=0; x<=WORLD_SIZE; x+=100) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,WORLD_SIZE); ctx.stroke(); }
+    for(let y=0; y<=WORLD_SIZE; y+=100) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(WORLD_SIZE,y); ctx.stroke(); }
+
+    ctx.strokeStyle = "red"; ctx.lineWidth = 10; ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+    
+    particles.forEach(p => { 
+        ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); 
+    });
 
     snakes.forEach(s => {
         if(!s.alive) return;
         if(!s.isBot && godMode && isAdmin) {
-            ctx.shadowBlur = 25; ctx.shadowColor = "cyan";
-            ctx.strokeStyle = "cyan"; ctx.lineWidth = 5;
+            ctx.shadowBlur = 20; ctx.shadowColor = "cyan";
+            ctx.strokeStyle = "cyan"; ctx.lineWidth = 4;
             ctx.beginPath(); ctx.arc(s.x, s.y, 30, 0, Math.PI*2); ctx.stroke();
             ctx.shadowBlur = 0; ctx.fillStyle = "cyan"; ctx.font = "bold 14px Arial";
             ctx.fillText("🛡️ ADMİN", s.x - 30, s.y - 60);
         }
         ctx.fillStyle = s.color;
         s.segments.forEach((seg, i) => { ctx.beginPath(); ctx.arc(seg.x, seg.y, i===0 ? 22 : 17, 0, Math.PI*2); ctx.fill(); });
-        ctx.shadowBlur = 0; ctx.fillStyle = "white"; ctx.font = "bold 15px Arial";
+        ctx.fillStyle = "white"; ctx.font = "bold 15px Arial";
         ctx.fillText(s.name, s.x - 20, s.y - 35);
     });
     ctx.restore();
 }
 
-window.addEventListener('keydown', e => {
-    if(e.key === "ArrowLeft") turnDir = -0.12;
-    if(e.key === "ArrowRight") turnDir = 0.12;
-    if(e.key.toLowerCase() === "g" && isAdmin) toggleGod();
-});
+// Kontroller ve Loop aynı kaldı
+window.addEventListener('keydown', e => { if(e.key === "ArrowLeft") turnDir = -0.12; if(e.key === "ArrowRight") turnDir = 0.12; if(e.key.toLowerCase() === "g" && isAdmin) toggleGod(); });
 window.addEventListener('keyup', () => turnDir = 0);
 document.getElementById("leftBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = -0.12; });
 document.getElementById("rightBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = 0.12; });
