@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ali Kemal Snake.io - Zero Variation</title>
+<title>Ali Kemal Snake.io</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   canvas { display: block; background: #050505; }
@@ -30,7 +30,7 @@
 
 <div id="menu">
   <h1 style="color:#ffd700;">SNAKE.IO</h1>
-  <input type="text" id="nameInput" placeholder="" maxlength="15">
+  <input type="text" id="nameInput" placeholder="" maxlength="12">
   <button id="startBtn" onclick="startGame()">OYNA</button>
 </div>
 
@@ -47,7 +47,7 @@ const ctx = canvas.getContext("2d");
 const WORLD_SIZE = 3600;
 
 // HIZ BURADA TEK BİR DEĞERDİR VE ASLA DEĞİŞMEZ
-const CONSTANT_SPEED = 8; 
+const CONSTANT_SPEED = 8.5; 
 
 let snakes = [], particles = [], turnDir = 0, godMode = false, isAdmin = false;
 let camera = { x: 0, y: 0 };
@@ -166,7 +166,6 @@ function draw() {
     ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save(); ctx.translate(-camera.x, -camera.y);
 
-    // KILAVUZ ÇİZGİLERİ
     ctx.strokeStyle = "#111"; ctx.lineWidth = 2;
     for(let i=0; i<=WORLD_SIZE; i+=250) {
         ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,WORLD_SIZE); ctx.stroke();
