@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ali Kemal Snake.io - Cesur Botlar</title>
+<title>Ali Kemal Snake.io - Dinamik Arena</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   canvas { display: block; background: #080808; }
@@ -19,6 +19,7 @@
   #controls { position: fixed; bottom: 30px; left: 0; right: 0; display: flex; justify-content: space-around; align-items: center; z-index: 150; padding: 0 20px; }
   .btn { width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; user-select: none; border: 2px solid rgba(255,255,255,0.4); }
   #mobileG { width: 55px; height: 55px; background: rgba(255, 0, 0, 0.3); font-size: 20px; border-color: red; display: none; }
+  #playerCount { font-size: 12px; color: #aaa; margin-top: 5px; }
 </style>
 </head>
 <body>
@@ -26,6 +27,7 @@
 <div id="ui">
     <div id="scoreBox">Puan: 0</div>
     <div id="godTag">🛡️ ÖLÜMSÜZ MOD AKTİF</div>
+    <div id="playerCount">Bağlı Oyuncular: 0</div>
 </div>
 
 <div id="leaderboard">
@@ -56,14 +58,13 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const WORLD_SIZE = 3500;
-const BOT_COUNT = 22;
-const VIEW_DISTANCE = 500;
+let targetBotCount = 25; // Başlangıç hedefi
 
 let snakes = [], particles = [], gameActive = false, turnDir = 0, godMode = false, isAdmin = false;
 let camera = { x: 0, y: 0 };
 let currentSpeed = 6.5;
 
-const botNames = ["Kerem", "Efe", "Zeynep", "Mert", "Arda", "Can", "Elif", "Deniz", "Selim", "Melis", "Emre", "Burak", "Selin", "Kaan", "Umut", "Bora", "Demir", "Nil", "Poyraz", "Ada", "Ali", "Veli"];
+const botNames = ["Kerem", "Efe", "Zeynep", "Mert", "Arda", "Can", "Elif", "Deniz", "Selim", "Melis", "Emre", "Burak", "Selin", "Kaan", "Umut", "Bora", "Demir", "Nil", "Poyraz", "Ada", "Ali", "Veli", "Ece", "Sarp", "Mira", "Ayaz"];
 
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.onresize = resize; resize();
@@ -82,7 +83,7 @@ function createBot() {
         state: "explore",
         targetPos: { x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE },
         aiUpdateTimer: 0,
-        bravery: Math.random() // Her botun cesaret seviyesi farklı
+        bravery: Math.random()
     };
 }
 
@@ -112,7 +113,8 @@ function startGame() {
 function init(pName) {
     snakes = []; particles = [];
     snakes.push({ name: pName, color: isAdmin ? "#00ff00" : getRandomColor(), x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, score: 0, segments: [], alive: true, isBot: false });
-    for(let i=0; i<BOT_COUNT; i++) snakes.push(createBot());
+    // Başlangıçta 25 botla başla
+    for(let i=0; i<25; i++) snakes.push(createBot());
     for(let i=0; i<1100; i++) spawnParticle();
     gameActive = true; requestAnimationFrame(loop);
 }
@@ -143,20 +145,33 @@ document.getElementById("mobileG").ontouchstart = (e) => { e.preventDefault(); t
 function loop() { if(!gameActive) return; update(); draw(); requestAnimationFrame(loop); }
 
 function update() {
+    let aliveSnakes = snakes.filter(s => s.alive);
+    document.getElementById("playerCount").innerText = "Bağlı Oyuncular: " + aliveSnakes.length;
+
+    // DİNAMİK BOT SAYISI YÖNETİMİ (35-20 arası rastgele değişim)
+    if (Math.random() < 0.005) { // Her karede düşük ihtimalle hedef sayıyı değiştir
+        targetBotCount = Math.floor(Math.random() * (35 - 20 + 1)) + 20;
+    }
+
+    // Eğer canlı bot sayısı hedefin altındaysa, %2 ihtimalle yeni bot ekle (Sanki sunucuya giriyor gibi)
+    if (aliveSnakes.length < targetBotCount && Math.random() < 0.02) {
+        snakes.push(createBot());
+    }
+
     let player = snakes.find(s => !s.isBot && s.alive);
 
     for(let i = 0; i < snakes.length; i++) {
         let s = snakes[i];
-        if(!s.alive) { if(s.isBot) { dropLoot(s); snakes[i] = createBot(); } continue; }
+        if(!s.alive) continue; 
         
         if (s.isBot) {
             s.aiUpdateTimer--;
             if(s.aiUpdateTimer <= 0) {
-                let visibleParticles = particles.filter(p => Math.hypot(s.x-p.x, s.y-p.y) < VIEW_DISTANCE);
-                let visibleEnemies = snakes.filter(os => os !== s && os.alive && Math.hypot(s.x-os.x, s.y-os.y) < VIEW_DISTANCE);
+                let viewDist = 500;
+                let visibleParticles = particles.filter(p => Math.hypot(s.x-p.x, s.y-p.y) < viewDist);
+                let visibleEnemies = snakes.filter(os => os !== s && os.alive && Math.hypot(s.x-os.x, s.y-os.y) < viewDist);
 
-                // CESARET KONTROLÜ: Bazen devasa oyuncuya saldır!
-                let attackRisk = Math.random() < (s.bravery * 0.4); 
+                let attackRisk = Math.random() < (s.bravery * 0.45); 
 
                 if(visibleEnemies.length > 0 && (attackRisk || visibleEnemies[0].score < s.score)) {
                     let targetEnemy = visibleEnemies[0];
@@ -176,9 +191,8 @@ function update() {
             }
 
             let desiredAngle = Math.atan2(s.targetPos.y - s.y, s.targetPos.x - s.x);
-            
-            // ÇARPIŞMADAN KAÇ (Bazen cesaretinden dolayı geç tepki verebilir)
             snakes.forEach(other => {
+                if(!other.alive) return;
                 other.segments.forEach((seg, idx) => {
                     if (idx % 12 === 0 && Math.hypot(s.x - seg.x, s.y - seg.y) < 55) {
                         desiredAngle += 0.9; 
@@ -205,7 +219,8 @@ function update() {
                 if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
             } else {
                 s.alive = false;
-                if(!s.isBot) { gameActive = false; dropLoot(s); setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); }
+                dropLoot(s);
+                if(!s.isBot) { gameActive = false; setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); }
             }
         }
 
@@ -229,7 +244,8 @@ function update() {
                     if(!s.isBot && godMode) { other.alive = false; s.score += 60; dropLoot(other); } 
                     else {
                         s.alive = false;
-                        if(!s.isBot) { gameActive = false; dropLoot(s); setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); }
+                        dropLoot(s);
+                        if(!s.isBot) { gameActive = false; setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); }
                     }
                 }
             });
@@ -238,12 +254,15 @@ function update() {
 
     if(player) { camera.x = player.x - canvas.width/2; camera.y = player.y - canvas.height/2; }
     
-    let sorted = [...snakes].sort((a,b) => b.score - a.score).slice(0, 7);
+    let sorted = [...snakes].filter(s => s.alive).sort((a,b) => b.score - a.score).slice(0, 7);
     let html = "";
     sorted.forEach((s, i) => { 
         html += `<div class="row" style="color:${s.color}"><span>${i+1}. ${s.name}</span><span>${s.score}</span></div>`; 
     });
     document.getElementById("leaderRows").innerHTML = html;
+
+    // Ölü yılanları temizle (hafıza için)
+    snakes = snakes.filter(s => s.alive || (!s.isBot));
 }
 
 function draw() {
