@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ali Kemal Snake.io - Dinamik Arena</title>
+<title>Ali Kemal Snake.io - Sunucu Sistemi</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   canvas { display: block; background: #080808; }
@@ -19,7 +19,7 @@
   #controls { position: fixed; bottom: 30px; left: 0; right: 0; display: flex; justify-content: space-around; align-items: center; z-index: 150; padding: 0 20px; }
   .btn { width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; user-select: none; border: 2px solid rgba(255,255,255,0.4); }
   #mobileG { width: 55px; height: 55px; background: rgba(255, 0, 0, 0.3); font-size: 20px; border-color: red; display: none; }
-  #playerCount { font-size: 12px; color: #aaa; margin-top: 5px; }
+  #serverInfo { font-size: 12px; color: #ffd700; margin-top: 5px; }
 </style>
 </head>
 <body>
@@ -27,7 +27,7 @@
 <div id="ui">
     <div id="scoreBox">Puan: 0</div>
     <div id="godTag">🛡️ ÖLÜMSÜZ MOD AKTİF</div>
-    <div id="playerCount">Bağlı Oyuncular: 0</div>
+    <div id="serverInfo">Sunucu Durumu: Bağlanıyor...</div>
 </div>
 
 <div id="leaderboard">
@@ -37,6 +37,7 @@
 
 <div id="menu">
   <h1 style="color:#ffd700; margin:0 0 10px 0;">SNAKE.IO</h1>
+  <p id="timerMsg" style="color:#aaa; font-size:12px;"></p>
   <input type="text" id="nameInput" placeholder="İsmin..." maxlength="15">
   <select id="difficulty">
     <option value="4.5">KOLAY</option>
@@ -58,23 +59,35 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const WORLD_SIZE = 3500;
-let targetBotCount = 25; // Başlangıç hedefi
 
 let snakes = [], particles = [], gameActive = false, turnDir = 0, godMode = false, isAdmin = false;
 let camera = { x: 0, y: 0 };
 let currentSpeed = 6.5;
+let deathTime = null;
+let currentBotPool = []; // Aktif sunucudaki botların isim listesi
 
-const botNames = ["Kerem", "Efe", "Zeynep", "Mert", "Arda", "Can", "Elif", "Deniz", "Selim", "Melis", "Emre", "Burak", "Selin", "Kaan", "Umut", "Bora", "Demir", "Nil", "Poyraz", "Ada", "Ali", "Veli", "Ece", "Sarp", "Mira", "Ayaz"];
+const allPossibleNames = ["Kerem", "Efe", "Zeynep", "Mert", "Arda", "Can", "Elif", "Deniz", "Selim", "Melis", "Emre", "Burak", "Selin", "Kaan", "Umut", "Bora", "Demir", "Nil", "Poyraz", "Ada", "Ali", "Veli", "Ece", "Sarp", "Mira", "Ayaz", "Taylan", "Ceren", "Doruk", "Buse", "Kuzey", "Güney", "Toprak", "Yağmur"];
 
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.onresize = resize; resize();
 
 function getRandomColor() { return `hsl(${Math.random() * 360}, 85%, 60%)`; }
 
-function createBot() {
+// Yeni bir bot havuzu oluştur (Sunucu değiştiğinde çağrılır)
+function refreshBotPool() {
+    let pool = [];
+    let shuffled = [...allPossibleNames].sort(() => 0.5 - Math.random());
+    for(let i=0; i<30; i++) {
+        pool.push({ name: shuffled[i % shuffled.length] + "_" + (Math.floor(Math.random()*90)+10), color: getRandomColor() });
+    }
+    return pool;
+}
+
+function createBotFromPool(index) {
+    let data = currentBotPool[index % currentBotPool.length];
     return {
-        name: botNames[Math.floor(Math.random()*botNames.length)] + "_" + (Math.floor(Math.random()*90)+10),
-        color: getRandomColor(),
+        name: data.name,
+        color: data.color,
         x: Math.random()*(WORLD_SIZE-600)+300, 
         y: Math.random()*(WORLD_SIZE-600)+300,
         angle: Math.random()*Math.PI*2, 
@@ -87,17 +100,21 @@ function createBot() {
     };
 }
 
-function dropLoot(snake) {
-    let dropAmount = Math.min(snake.segments.length, 45);
-    for(let i = 0; i < dropAmount; i++) {
-        let seg = snake.segments[i*2] || {x: snake.x, y: snake.y};
-        particles.push({ x: seg.x + (Math.random()-0.5)*60, y: seg.y + (Math.random()-0.5)*60, color: snake.color, size: 7 });
-    }
-}
-
 function startGame() {
+    let now = Date.now();
     let rawName = document.getElementById("nameInput").value.trim();
     currentSpeed = parseFloat(document.getElementById("difficulty").value);
+
+    // SUNUCU KONTROLÜ
+    if (!deathTime || (now - deathTime) > 50000) {
+        // 50 saniye geçti veya ilk oyun: Yeni sunucu/isimler
+        currentBotPool = refreshBotPool();
+        document.getElementById("serverInfo").innerText = "Sunucu: Yeni Dünya (#" + Math.floor(Math.random()*999) + ")";
+    } else {
+        // 50 saniye geçmedi: Aynı isimlerle devam
+        document.getElementById("serverInfo").innerText = "Sunucu: Aynı Dünyaya Dönüldü";
+    }
+
     if(rawName === "Ali Kemal") { 
         isAdmin = true; rawName = "Ali Kemal [Admin]"; 
         document.getElementById("mobileG").style.display = "flex";
@@ -106,6 +123,7 @@ function startGame() {
         document.getElementById("godTag").style.display = "none";
         document.getElementById("mobileG").style.display = "none";
     }
+    
     document.getElementById("menu").style.display = "none";
     init(rawName || "Oyuncu");
 }
@@ -113,8 +131,12 @@ function startGame() {
 function init(pName) {
     snakes = []; particles = [];
     snakes.push({ name: pName, color: isAdmin ? "#00ff00" : getRandomColor(), x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, score: 0, segments: [], alive: true, isBot: false });
-    // Başlangıçta 25 botla başla
-    for(let i=0; i<25; i++) snakes.push(createBot());
+    
+    // Mevcut havuzdaki botları oluştur
+    for(let i=0; i<currentBotPool.length; i++) {
+        snakes.push(createBotFromPool(i));
+    }
+    
     for(let i=0; i<1100; i++) spawnParticle();
     gameActive = true; requestAnimationFrame(loop);
 }
@@ -145,24 +167,21 @@ document.getElementById("mobileG").ontouchstart = (e) => { e.preventDefault(); t
 function loop() { if(!gameActive) return; update(); draw(); requestAnimationFrame(loop); }
 
 function update() {
-    let aliveSnakes = snakes.filter(s => s.alive);
-    document.getElementById("playerCount").innerText = "Bağlı Oyuncular: " + aliveSnakes.length;
-
-    // DİNAMİK BOT SAYISI YÖNETİMİ (35-20 arası rastgele değişim)
-    if (Math.random() < 0.005) { // Her karede düşük ihtimalle hedef sayıyı değiştir
-        targetBotCount = Math.floor(Math.random() * (35 - 20 + 1)) + 20;
-    }
-
-    // Eğer canlı bot sayısı hedefin altındaysa, %2 ihtimalle yeni bot ekle (Sanki sunucuya giriyor gibi)
-    if (aliveSnakes.length < targetBotCount && Math.random() < 0.02) {
-        snakes.push(createBot());
-    }
-
     let player = snakes.find(s => !s.isBot && s.alive);
 
     for(let i = 0; i < snakes.length; i++) {
         let s = snakes[i];
-        if(!s.alive) continue; 
+        if(!s.alive) {
+            if(s.isBot) { 
+                let dropAmount = Math.min(s.segments.length, 45);
+                for(let k = 0; k < dropAmount; k++) {
+                    let seg = s.segments[k*2] || {x: s.x, y: s.y};
+                    particles.push({ x: seg.x + (Math.random()-0.5)*60, y: seg.y + (Math.random()-0.5)*60, color: s.color, size: 7 });
+                }
+                snakes[i] = createBotFromPool(i); // Aynı havuzdan yeni bot
+            }
+            continue; 
+        }
         
         if (s.isBot) {
             s.aiUpdateTimer--;
@@ -204,7 +223,6 @@ function update() {
             while (diff < -Math.PI) diff += Math.PI * 2;
             while (diff > Math.PI) diff -= Math.PI * 2;
             s.angle += diff * 0.14;
-
             if (s.x < 100 || s.x > WORLD_SIZE - 100 || s.y < 100 || s.y > WORLD_SIZE - 100) s.angle += 0.3;
         } else {
             s.angle += turnDir;
@@ -219,8 +237,7 @@ function update() {
                 if(s.y < 0) s.y = 0; if(s.y > WORLD_SIZE) s.y = WORLD_SIZE;
             } else {
                 s.alive = false;
-                dropLoot(s);
-                if(!s.isBot) { gameActive = false; setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); }
+                if(!s.isBot) handlePlayerDeath();
             }
         }
 
@@ -241,11 +258,10 @@ function update() {
             if(!other.alive || s === other) return;
             other.segments.forEach((p, idx) => {
                 if(Math.hypot(s.x - p.x, s.y - p.y) < 18) {
-                    if(!s.isBot && godMode) { other.alive = false; s.score += 60; dropLoot(other); } 
+                    if(!s.isBot && godMode) { other.alive = false; s.score += 60; } 
                     else {
                         s.alive = false;
-                        dropLoot(s);
-                        if(!s.isBot) { gameActive = false; setTimeout(() => { document.getElementById("menu").style.display = "block"; }, 500); }
+                        if(!s.isBot) handlePlayerDeath();
                     }
                 }
             });
@@ -253,16 +269,17 @@ function update() {
     }
 
     if(player) { camera.x = player.x - canvas.width/2; camera.y = player.y - canvas.height/2; }
-    
     let sorted = [...snakes].filter(s => s.alive).sort((a,b) => b.score - a.score).slice(0, 7);
     let html = "";
-    sorted.forEach((s, i) => { 
-        html += `<div class="row" style="color:${s.color}"><span>${i+1}. ${s.name}</span><span>${s.score}</span></div>`; 
-    });
+    sorted.forEach((s, i) => { html += `<div class="row" style="color:${s.color}"><span>${i+1}. ${s.name}</span><span>${s.score}</span></div>`; });
     document.getElementById("leaderRows").innerHTML = html;
+}
 
-    // Ölü yılanları temizle (hafıza için)
-    snakes = snakes.filter(s => s.alive || (!s.isBot));
+function handlePlayerDeath() {
+    gameActive = false;
+    deathTime = Date.now();
+    document.getElementById("menu").style.display = "block";
+    document.getElementById("timerMsg").innerText = "Aynı sunucuya dönmek için 50 saniyen var!";
 }
 
 function draw() {
