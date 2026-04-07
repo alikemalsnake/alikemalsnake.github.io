@@ -3,40 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ali Kemal Snake.io - Pro Edition</title>
+<title>Ali Kemal Snake.io - Fix Edition</title>
 <style>
   body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; touch-action: none; }
   canvas { display: block; background: #080808; }
   #ui { position: fixed; top: 10px; left: 10px; z-index: 100; pointer-events: none; }
   #scoreBox { font-size: 25px; color: #00ff00; font-weight: bold; text-shadow: 2px 2px #000; }
-  #godTag { display: none; color: white; background: red; padding: 5px 15px; border-radius: 8px; margin-top: 5px; font-weight: bold; border: 2px solid white; font-size: 14px; }
+  #godTag { display: none; color: white; background: #007bff; padding: 5px 15px; border-radius: 8px; margin-top: 5px; font-weight: bold; border: 2px solid white; font-size: 14px; box-shadow: 0 0 10px #fff; }
   #leaderboard { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.85); padding: 12px; border: 2px solid #ffd700; border-radius: 12px; min-width: 180px; }
   .row { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
-  #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: rgba(20, 20, 20, 0.95); padding: 30px; border-radius: 25px; text-align: center; border: 5px solid #ffd700; width: 85%; max-width: 380px; box-shadow: 0 0 30px rgba(255, 215, 0, 0.3); }
+  #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: rgba(20, 20, 20, 0.95); padding: 30px; border-radius: 25px; text-align: center; border: 5px solid #ffd700; width: 85%; max-width: 380px; }
   input { font-size: 18px; padding: 12px; border-radius: 10px; margin: 10px; text-align: center; width: 85%; background: #000; color: #fff; border: 2px solid #444; }
-  button#startBtn { font-size: 24px; padding: 15px 50px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 15px; font-weight: bold; margin-top: 20px; transition: 0.2s; }
+  button#startBtn { font-size: 24px; padding: 15px 50px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 15px; font-weight: bold; margin-top: 20px; }
   #controls { position: fixed; bottom: 30px; left: 0; right: 0; display: flex; justify-content: space-around; align-items: center; z-index: 150; padding: 0 20px; }
   .btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.15); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; user-select: none; border: 2px solid rgba(255,255,255,0.3); }
-  #mobileG { width: 60px; height: 60px; background: rgba(255, 0, 0, 0.2); font-size: 20px; border-color: red; display: none; }
+  #mobileG { width: 60px; height: 60px; background: rgba(0, 123, 255, 0.3); font-size: 20px; border-color: #007bff; display: none; }
 </style>
 </head>
 <body>
 
 <div id="ui">
     <div id="scoreBox">Puan: 0</div>
-    <div id="godTag">🛡️ ÖLÜMSÜZ MOD</div>
+    <div id="godTag">🛡️ KALKAN AKTİF</div>
 </div>
 
 <div id="leaderboard">
-    <h4 style="margin:0 0 8px 0; color:#ffd700; text-align:center;">SKOR TABLOSU</h4>
+    <h4 style="margin:0 0 8px 0; color:#ffd700; text-align:center;">LİDERLER</h4>
     <div id="leaderRows"></div>
 </div>
 
 <div id="menu">
   <h1 style="color:#ffd700; margin:0 0 10px 0;">SNAKE.IO</h1>
-  <p id="timerMsg" style="color:#00ff00; font-size:13px;">Sunucu Aktif - Bağlanabilirsin</p>
+  <p id="timerMsg" style="color:#00ff00; font-size:13px;">Sunucu Bağlantısı Hazır</p>
   <input type="text" id="nameInput" placeholder="İsmin..." maxlength="15">
-  <button id="startBtn" onclick="startGame()">BAŞLAT</button>
+  <button id="startBtn" onclick="startGame()">OYUNA BAŞLA</button>
 </div>
 
 <div id="controls">
@@ -80,11 +80,11 @@ function spawnBot(index) {
         x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE,
         angle: Math.random()*Math.PI*2, score: Math.floor(Math.random()*40)+20,
         segments: [], alive: true, isBot: true, aiTimer: 0,
-        targetPos: {x: 0, y: 0}, state: "eat"
+        targetPos: {x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE}
     };
 }
 
-// Dünyayı kur
+// Başlangıç Dünyası
 currentBotPool = createBotPool();
 for(let i=0; i<currentBotPool.length; i++) snakes.push(spawnBot(i));
 for(let i=0; i<1200; i++) particles.push({ x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE, color: getRandomColor() });
@@ -102,6 +102,9 @@ function startGame() {
     if(name === "Ali Kemal") { 
         isAdmin = true; name = "Ali Kemal [Admin]"; 
         document.getElementById("mobileG").style.display = "flex";
+    } else {
+        isAdmin = false; godMode = false;
+        document.getElementById("godTag").style.display = "none";
     }
 
     snakes = snakes.filter(s => s.isBot);
@@ -117,7 +120,7 @@ function update() {
     let player = snakes.find(s => !s.isBot && s.alive);
     let aliveSnakes = snakes.filter(s => s.alive);
 
-    // Kamera Takibi
+    // KAMERA DONMAYI ENGELLEME: Oyuncu yoksa lideri takip et
     if (player) {
         camera.x = player.x - canvas.width/2;
         camera.y = player.y - canvas.height/2;
@@ -141,31 +144,16 @@ function update() {
         if (s.isBot) {
             s.aiTimer--;
             if (s.aiTimer <= 0) {
-                let distToPlayer = player ? Math.hypot(s.x - player.x, s.y - player.y) : 9999;
+                let distToP = player ? Math.hypot(s.x-player.x, s.y-player.y) : 9999;
                 
-                // --- STRATEJİK ZEKA ---
-                if (player && distToPlayer < 700) {
-                    if (player.score < 100) { 
-                        // Sen küçükken daha agresif saldırırlar
-                        s.state = (Math.random() < 0.6) ? "attack" : "circle";
-                    } else if (player.score > 400) {
-                        // Sen büyükken korkarlar, NADİREN (0.05 ihtimal) saldırırlar
-                        s.state = (Math.random() < 0.05) ? "attack" : "circle";
+                // Bot Zekası
+                if (player && distToP < 600) {
+                    if (player.score < 100) s.targetPos = { x: player.x, y: player.y };
+                    else if (player.score > 400 && Math.random() > 0.05) {
+                        s.targetPos = { x: player.x + Math.cos(Date.now()/500)*400, y: player.y + Math.sin(Date.now()/500)*400 };
                     } else {
-                        s.state = "circle";
+                        s.targetPos = { x: player.x, y: player.y };
                     }
-                } else {
-                    s.state = "eat";
-                }
-
-                if (s.state === "attack" && player) {
-                    s.targetPos = { x: player.x, y: player.y };
-                } else if (s.state === "circle" && player) {
-                    // Etrafında dolanma mantığı
-                    s.targetPos = { 
-                        x: player.x + Math.cos(Date.now()/1000) * 300, 
-                        y: player.y + Math.sin(Date.now()/1000) * 300 
-                    };
                 } else {
                     let p = particles[Math.floor(Math.random()*particles.length)];
                     s.targetPos = { x: p.x, y: p.y };
@@ -174,12 +162,8 @@ function update() {
             }
 
             let desiredAngle = Math.atan2(s.targetPos.y - s.y, s.targetPos.x - s.x);
-            
-            // Çarpışma Önleyici
             snakes.forEach(other => {
-                if (other.alive && s !== other && Math.hypot(s.x - other.x, s.y - other.y) < 100) {
-                    desiredAngle += 0.8;
-                }
+                if (other.alive && s !== other && Math.hypot(s.x - other.x, s.y - other.y) < 100) desiredAngle += 0.8;
             });
 
             let diff = desiredAngle - s.angle;
@@ -193,7 +177,6 @@ function update() {
         s.x += Math.cos(s.angle) * currentSpeed;
         s.y += Math.sin(s.angle) * currentSpeed;
 
-        // Dünya Sınırı
         if (s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
             if (!s.isBot && godMode) {
                 s.x = Math.max(0, Math.min(WORLD_SIZE, s.x));
@@ -216,13 +199,14 @@ function update() {
             }
         });
 
-        // Çarpışma Ölümü
+        // Çarpışma
         snakes.forEach(other => {
             if (!other.alive || s === other) return;
             other.segments.forEach((seg, si) => {
                 if (si > 3 && Math.hypot(s.x - seg.x, s.y - seg.y) < 18) {
-                    if (!s.isBot && godMode) { other.alive = false; s.score += 50; }
-                    else {
+                    if (!s.isBot && godMode) { 
+                        other.alive = false; s.score += 50; 
+                    } else {
                         s.alive = false;
                         if (!s.isBot) { deathTime = Date.now(); document.getElementById("menu").style.display = "block"; }
                     }
@@ -233,9 +217,7 @@ function update() {
 
     let top = aliveSnakes.sort((a,b) => b.score - a.score).slice(0, 7);
     let html = "";
-    top.forEach((ts, i) => {
-        html += `<div class="row" style="color:${ts.color}"><span>${i+1}. ${ts.name}</span><span>${ts.score}</span></div>`;
-    });
+    top.forEach((ts, i) => { html += `<div class="row" style="color:${ts.color}"><span>${i+1}. ${ts.name}</span><span>${ts.score}</span></div>`; });
     document.getElementById("leaderRows").innerHTML = html;
 }
 
@@ -243,7 +225,7 @@ function draw() {
     ctx.fillStyle = "#080808"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save(); ctx.translate(-camera.x, -camera.y);
     
-    // Grid
+    // Izgara
     ctx.strokeStyle = "#151515"; ctx.lineWidth = 2;
     for(let i=0; i<=WORLD_SIZE; i+=250) {
         ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, WORLD_SIZE); ctx.stroke();
@@ -256,12 +238,30 @@ function draw() {
 
     snakes.forEach(s => {
         if (!s.alive) return;
+
+        // --- KALKAN EFEKTİ (Beyaz Işıltı) ---
+        if (!s.isBot && godMode) {
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = "white";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, 25, 0, Math.PI*2);
+            ctx.stroke();
+        }
+
         ctx.fillStyle = s.color;
         s.segments.forEach((seg, si) => {
-            ctx.beginPath(); ctx.arc(seg.x, seg.y, si === 0 ? 19 : 15, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath();
+            ctx.arc(seg.x, seg.y, si === 0 ? 19 : 15, 0, Math.PI*2);
+            ctx.fill();
+            // Kuyrukta da hafif parlama olsun
+            if (!s.isBot && godMode) { ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke(); }
         });
+
+        ctx.shadowBlur = 0; // Diğerleri parlamasın
         ctx.fillStyle = "white"; ctx.font = "bold 15px Arial";
-        ctx.fillText(s.name, s.x - 30, s.y - 30);
+        ctx.fillText(s.name, s.x - 30, s.y - 35);
     });
     ctx.restore();
 }
@@ -277,9 +277,16 @@ window.addEventListener('keydown', e => {
     }
 });
 window.addEventListener('keyup', () => turnDir = 0);
+
 document.getElementById("leftBtn").ontouchstart = () => turnDir = -0.12;
 document.getElementById("rightBtn").ontouchstart = () => turnDir = 0.12;
 document.getElementById("leftBtn").ontouchend = document.getElementById("rightBtn").ontouchend = () => turnDir = 0;
+document.getElementById("mobileG").onclick = () => {
+    if(isAdmin) {
+        godMode = !godMode;
+        document.getElementById("godTag").style.display = godMode ? "block" : "none";
+    }
+};
 
 loop();
 </script>
