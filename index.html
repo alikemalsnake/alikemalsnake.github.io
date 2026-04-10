@@ -23,7 +23,6 @@
     border: 2px solid #ff0000; 
     cursor: pointer; 
     font-size: 14px;
-    text-shadow: 0 0 5px #000;
   }
   
   #leaderboard { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.85); padding: 12px; border: 2px solid #ffd700; border-radius: 12px; min-width: 160px; }
@@ -75,32 +74,8 @@ const WORLD_SIZE = 3600;
 
 let snakes = [], particles = [], turnDir = 0, isAdmin = false, superMode = false;
 let camera = { x: 0, y: 0 }, baseSpeed = 10;
-let botNames = ["Efe", "Can", "Arda", "Zeynep", "Mert", "Nil", "Sarp", "Mira", "Ada", "Kaan"];
 
-function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-window.onresize = resize; resize();
-
-function spawnParticle() {
-    return { 
-        x: Math.random() * (WORLD_SIZE - 100) + 50, 
-        y: Math.random() * (WORLD_SIZE - 100) + 50, 
-        color: `hsl(${Math.random() * 360}, 90%, 60%)`,
-        size: 6
-    };
-}
-
-function spawnBot() {
-    return {
-        name: botNames[Math.floor(Math.random()*botNames.length)] + "_" + Math.floor(Math.random()*99),
-        color: `hsl(${Math.random()*360}, 70%, 50%)`,
-        x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE,
-        angle: Math.random()*Math.PI*2, score: 20, segments: [], alive: true, isBot: true, aiTimer: 0
-    };
-}
-
-for(let i=0; i<15; i++) snakes.push(spawnBot());
-for(let i=0; i<300; i++) particles.push(spawnParticle());
-
+// MOD DEĞİŞTİRME FONKSİYONU
 function toggleSuperMode() {
     if(!isAdmin) return;
     superMode = !superMode;
@@ -117,6 +92,43 @@ function toggleSuperMode() {
         btn.style.boxShadow = "0 0 10px rgba(255,0,0,0.5)";
     }
 }
+
+// KISAYOL DİNLEYİCİSİ - Daha güçlü algılama
+window.onkeydown = function(e) {
+    if(e.key.toLowerCase() === "g") {
+        toggleSuperMode();
+    }
+    if(e.key === "ArrowLeft") turnDir = -0.15;
+    if(e.key === "ArrowRight") turnDir = 0.15;
+};
+
+window.onkeyup = function(e) {
+    if(e.key === "ArrowLeft" || e.key === "ArrowRight") turnDir = 0;
+};
+
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.onresize = resize; resize();
+
+function spawnParticle() {
+    return { 
+        x: Math.random() * (WORLD_SIZE - 100) + 50, 
+        y: Math.random() * (WORLD_SIZE - 100) + 50, 
+        color: `hsl(${Math.random() * 360}, 90%, 60%)`,
+        size: 6
+    };
+}
+
+function spawnBot() {
+    return {
+        name: "Bot_" + Math.floor(Math.random()*999),
+        color: `hsl(${Math.random()*360}, 70%, 50%)`,
+        x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE,
+        angle: Math.random()*Math.PI*2, score: 20, segments: [], alive: true, isBot: true, aiTimer: 0
+    };
+}
+
+for(let i=0; i<15; i++) snakes.push(spawnBot());
+for(let i=0; i<300; i++) particles.push(spawnParticle());
 
 function startGame(mode) {
     let name = document.getElementById("nameInput").value.trim();
@@ -243,12 +255,7 @@ function draw() {
     document.getElementById("leaderRows").innerHTML = html;
 }
 
-window.addEventListener('keydown', e => { 
-    if(e.key === "ArrowLeft") turnDir = -0.15; 
-    if(e.key === "ArrowRight") turnDir = 0.15; 
-    if(e.key.toLowerCase() === "g" && isAdmin) toggleSuperMode(); // G TUŞU KISAYOLU
-});
-window.addEventListener('keyup', () => turnDir = 0);
+// Mobil dokunmatik kontroller
 document.getElementById("leftBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = -0.15; });
 document.getElementById("rightBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = 0.15; });
 document.getElementById("leftBtn").addEventListener('touchend', () => turnDir = 0);
