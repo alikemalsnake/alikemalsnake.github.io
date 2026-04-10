@@ -9,7 +9,23 @@
   canvas { display: block; background: #050505; }
   #ui { position: fixed; top: 10px; left: 10px; z-index: 100; pointer-events: none; }
   #scoreBox { font-size: 26px; color: #00ff00; font-weight: bold; text-shadow: 2px 2px #000; }
-  #adminStatus { display: none; color: #00ffff; font-weight: bold; font-size: 18px; margin-top: 5px; text-shadow: 0 0 10px #00ffff; }
+  
+  /* ADMIN KONTROL BUTONU */
+  #superToggle { 
+    display: none; 
+    pointer-events: auto; 
+    background: #ff0000; 
+    color: white; 
+    padding: 15px 25px; 
+    border-radius: 12px; 
+    margin-top: 10px; 
+    font-weight: bold; 
+    border: 3px solid white; 
+    cursor: pointer; 
+    font-size: 16px;
+    box-shadow: 0 0 15px #ff0000;
+  }
+  
   #leaderboard { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.85); padding: 12px; border: 2px solid #ffd700; border-radius: 12px; min-width: 160px; }
   .row { display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; margin-bottom: 3px; }
   #menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; background: rgba(10, 10, 10, 0.98); padding: 30px; border-radius: 25px; text-align: center; border: 4px solid #ffd700; width: 85%; max-width: 350px; }
@@ -28,7 +44,7 @@
 
 <div id="ui">
     <div id="scoreBox">Puan: 0</div>
-    <div id="adminStatus">🛡️ ADMİN KALKANI AKTİF</div>
+    <div id="superToggle" onclick="toggleSuperMode()">🚀 SÜPER MOD: KAPALI</div>
 </div>
 
 <div id="leaderboard"><div id="leaderRows"></div></div>
@@ -55,19 +71,19 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const WORLD_SIZE = 3600;
 
-let snakes = [], particles = [], turnDir = 0, isAdmin = false;
+let snakes = [], particles = [], turnDir = 0, isAdmin = false, superMode = false;
 let camera = { x: 0, y: 0 }, gameDiff = 'medium';
-let moveSpeed = 10;
+let baseSpeed = 10;
 let botNames = ["Efe", "Can", "Arda", "Zeynep", "Mert", "Nil", "Sarp", "Mira", "Ada", "Kaan"];
 
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.onresize = resize; resize();
 
-function spawnParticle(x = null, y = null, color = null) {
+function spawnParticle() {
     return { 
-        x: x ?? Math.random() * (WORLD_SIZE - 60) + 30, 
-        y: y ?? Math.random() * (WORLD_SIZE - 60) + 30, 
-        color: color ?? `hsl(${Math.random() * 360}, 90%, 60%)`,
+        x: Math.random() * (WORLD_SIZE - 60) + 30, 
+        y: Math.random() * (WORLD_SIZE - 60) + 30, 
+        color: `hsl(${Math.random() * 360}, 90%, 60%)`,
         size: 6
     };
 }
@@ -84,19 +100,34 @@ function spawnBot() {
 for(let i=0; i<15; i++) snakes.push(spawnBot());
 for(let i=0; i<300; i++) particles.push(spawnParticle());
 
+// MOD DEĞİŞTİRME FONKSİYONU
+function toggleSuperMode() {
+    if(!isAdmin) return;
+    superMode = !superMode;
+    const btn = document.getElementById("superToggle");
+    if(superMode) {
+        btn.innerText = "🚀 SÜPER MOD: AÇIK";
+        btn.style.background = "#00ff00";
+        btn.style.boxShadow = "0 0 20px #00ff00";
+    } else {
+        btn.innerText = "🚀 SÜPER MOD: KAPALI";
+        btn.style.background = "#ff0000";
+        btn.style.boxShadow = "0 0 15px #ff0000";
+    }
+}
+
 function startGame(mode) {
     gameDiff = mode;
     let name = document.getElementById("nameInput").value.trim();
+    baseSpeed = mode === 'easy' ? 7 : mode === 'medium' ? 10 : 15;
     
-    // ADMIN KONTROLÜ
     if(name === "Ali Kemal" || name === "Alihan Yeşil") {
         isAdmin = true;
-        document.getElementById("adminStatus").style.display = "block";
-        moveSpeed = 20; // Admin hızı
+        document.getElementById("superToggle").style.display = "block";
     } else {
         isAdmin = false;
-        document.getElementById("adminStatus").style.display = "none";
-        moveSpeed = mode === 'easy' ? 7 : mode === 'medium' ? 10 : 15;
+        superMode = false;
+        document.getElementById("superToggle").style.display = "none";
     }
 
     snakes = snakes.filter(s => s.isBot);
@@ -105,8 +136,7 @@ function startGame(mode) {
         color: isAdmin ? "#00ffff" : "#ff5500", 
         x: WORLD_SIZE/2, y: WORLD_SIZE/2, 
         angle: 0, score: 0, segments: [], 
-        alive: true, isBot: false, 
-        hasShield: isAdmin // Kalkon sadece adminlerde
+        alive: true, isBot: false 
     });
     document.getElementById("menu").style.display = "none";
 }
@@ -118,6 +148,8 @@ function update() {
     snakes.forEach(s => {
         if(!s.alive) { if(s.isBot) { Object.assign(s, spawnBot()); s.segments = []; } return; }
         
+        let currentSpeed = (s.isBot) ? 10 : (isAdmin && superMode ? 22 : baseSpeed);
+
         if(s.isBot) {
             s.aiTimer--;
             if(s.aiTimer <= 0) {
@@ -131,12 +163,11 @@ function update() {
             s.angle += diff * 0.1;
         } else { s.angle += turnDir; }
 
-        s.x += Math.cos(s.angle) * moveSpeed;
-        s.y += Math.sin(s.angle) * moveSpeed;
+        s.x += Math.cos(s.angle) * currentSpeed;
+        s.y += Math.sin(s.angle) * currentSpeed;
 
-        // Admin Duvar Kalkanı
         if(s.x < 0 || s.x > WORLD_SIZE || s.y < 0 || s.y > WORLD_SIZE) {
-            if(!s.isBot && isAdmin) { 
+            if(!s.isBot && isAdmin && superMode) { 
                 s.x = Math.max(0, Math.min(WORLD_SIZE, s.x)); 
                 s.y = Math.max(0, Math.min(WORLD_SIZE, s.y)); 
             } else { 
@@ -149,7 +180,7 @@ function update() {
 
         for(let i = particles.length - 1; i >= 0; i--) {
             if(Math.hypot(s.x - particles[i].x, s.y - particles[i].y) < 28) {
-                s.score += isAdmin ? 2 : 1;
+                s.score += (isAdmin && superMode && !s.isBot) ? 2 : 1;
                 particles.splice(i, 1);
                 if(particles.length < 300) particles.push(spawnParticle());
                 if(!s.isBot) document.getElementById("scoreBox").innerText = "Puan: " + s.score;
@@ -160,10 +191,10 @@ function update() {
             if(!other.alive || s === other) return;
             other.segments.forEach((seg, si) => {
                 if(si > 5 && Math.hypot(s.x - seg.x, s.y - seg.y) < 20) {
-                    if(!s.isBot && isAdmin) { 
-                        other.alive = false; // Admin kalkanı çarptığını yok eder
+                    if(!s.isBot && isAdmin && superMode) { 
+                        other.alive = false; 
                         s.score += 5; 
-                    } else if (other.isBot || !isAdmin) { 
+                    } else { 
                         s.alive = false; if(!s.isBot) document.getElementById("menu").style.display = "block"; 
                     }
                 }
@@ -181,7 +212,6 @@ function draw() {
     ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save(); ctx.translate(-camera.x, -camera.y);
     
-    // Grid
     ctx.strokeStyle = "#151515"; ctx.lineWidth = 2;
     for(let x=0; x<=WORLD_SIZE; x+=200) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,WORLD_SIZE); ctx.stroke(); }
     for(let y=0; y<=WORLD_SIZE; y+=200) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(WORLD_SIZE,y); ctx.stroke(); }
@@ -191,15 +221,14 @@ function draw() {
     snakes.forEach(s => {
         if(!s.alive) return;
         
-        // --- KALKAN GÖRÜNTÜSÜ BURADA ---
-        if(!s.isBot && isAdmin) {
+        // --- SÜPER MOD KALKAN EFEKTİ ---
+        if(!s.isBot && isAdmin && superMode) {
             ctx.strokeStyle = "#00ffff";
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.arc(s.x, s.y, 35, 0, Math.PI*2); // Kafanın etrafında mavi halka
+            ctx.arc(s.x, s.y, 35, 0, Math.PI*2);
             ctx.stroke();
-            
-            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 20;
             ctx.shadowColor = "#00ffff";
         }
 
@@ -217,7 +246,11 @@ function draw() {
     ctx.restore();
 }
 
-window.addEventListener('keydown', e => { if(e.key === "ArrowLeft") turnDir = -0.15; if(e.key === "ArrowRight") turnDir = 0.15; });
+window.addEventListener('keydown', e => { 
+    if(e.key === "ArrowLeft") turnDir = -0.15; 
+    if(e.key === "ArrowRight") turnDir = 0.15; 
+    if(e.key.toLowerCase() === "s" && isAdmin) toggleSuperMode(); // Klavye için S tuşu
+});
 window.addEventListener('keyup', () => turnDir = 0);
 document.getElementById("leftBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = -0.15; });
 document.getElementById("rightBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = 0.15; });
