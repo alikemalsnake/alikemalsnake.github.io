@@ -75,7 +75,13 @@ const WORLD_SIZE = 3600;
 let snakes = [], particles = [], turnDir = 0, isAdmin = false, superMode = false;
 let camera = { x: 0, y: 0 }, baseSpeed = 10;
 
-// MOD DEĞİŞTİRME FONKSİYONU
+// GÜNCEL BOT İSİMLERİ LİSTESİ
+const botNames = [
+    "Arda", "Zeynep", "Mert", "Ece", "Burak", "Selin", "Emir", "Melis", 
+    "Yusuf", "Elif", "Can", "Gamze", "Deniz", "Pelin", "Kaan", "Duru",
+    "Demir", "İrem", "Batu", "Azra", "Okan", "Sude", "Kerem", "Nisa"
+];
+
 function toggleSuperMode() {
     if(!isAdmin) return;
     superMode = !superMode;
@@ -93,11 +99,8 @@ function toggleSuperMode() {
     }
 }
 
-// KISAYOL DİNLEYİCİSİ - Daha güçlü algılama
 window.onkeydown = function(e) {
-    if(e.key.toLowerCase() === "g") {
-        toggleSuperMode();
-    }
+    if(e.key.toLowerCase() === "g") toggleSuperMode();
     if(e.key === "ArrowLeft") turnDir = -0.15;
     if(e.key === "ArrowRight") turnDir = 0.15;
 };
@@ -119,8 +122,12 @@ function spawnParticle() {
 }
 
 function spawnBot() {
+    // Rastgele isim ve yanına rastgele numara
+    let randomName = botNames[Math.floor(Math.random() * botNames.length)];
+    let randomNum = Math.floor(Math.random() * 99);
+    
     return {
-        name: "Bot_" + Math.floor(Math.random()*999),
+        name: randomName + "_" + randomNum,
         color: `hsl(${Math.random()*360}, 70%, 50%)`,
         x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE,
         angle: Math.random()*Math.PI*2, score: 20, segments: [], alive: true, isBot: true, aiTimer: 0
@@ -255,7 +262,6 @@ function draw() {
     document.getElementById("leaderRows").innerHTML = html;
 }
 
-// Mobil dokunmatik kontroller
 document.getElementById("leftBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = -0.15; });
 document.getElementById("rightBtn").addEventListener('touchstart', (e) => { e.preventDefault(); turnDir = 0.15; });
 document.getElementById("leftBtn").addEventListener('touchend', () => turnDir = 0);
