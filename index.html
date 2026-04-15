@@ -45,7 +45,7 @@
 
 <script>
 const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d", { alpha: false }); // Performans için alpha kapatıldı
+const ctx = canvas.getContext("2d", { alpha: false });
 const WORLD_SIZE = 3600;
 
 let snakes = [], particles = [], turnDir = 0, isAdmin = false, superMode = false;
@@ -55,14 +55,19 @@ const botNames = ["Efe_Pro", "Zeynep_X", "SnakeKing", "Mert_07", "Can_Slayer", "
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.onresize = resize; resize();
 
-function spawnParticle(x, y, color, size = 6, value = 1, scatter = false) {
+function spawnParticle(x, y, color, size = 4, value = 1, scatter = false) {
     let px = x ?? Math.random() * WORLD_SIZE;
     let py = y ?? Math.random() * WORLD_SIZE;
-    if(scatter) { // Yılan patladığında çok daha dağınık olması için
-        px += (Math.random() - 0.5) * 120;
-        py += (Math.random() - 0.5) * 120;
+    if(scatter) { 
+        px += (Math.random() - 0.5) * 150; // Saçılma alanını daha da genişlettim
+        py += (Math.random() - 0.5) * 150;
     }
-    return { x: px, y: py, color: color ?? `hsl(${Math.random()*360}, 80%, 50%)`, size, value };
+    return { 
+        x: px, y: py, 
+        color: color ?? `hsl(${Math.random()*360}, 80%, 50%)`, 
+        size: size, // Boyut küçüldü (Normal: 4, Patlama: 6)
+        value: value 
+    };
 }
 
 function spawnBot() {
@@ -74,7 +79,6 @@ function spawnBot() {
     };
 }
 
-// Başlangıçta daha az parçacık (Performans için)
 for(let i=0; i<12; i++) snakes.push(spawnBot());
 for(let i=0; i<250; i++) particles.push(spawnParticle());
 
@@ -95,9 +99,9 @@ window.onkeyup = () => turnDir = 0;
 function handleDeath(s) {
     if(!s.alive) return;
     s.alive = false;
-    // Yemleri çok daha seyrek ve dağınık bırak (Kasmayı önler ve birleşmeyi engeller)
-    for(let i=0; i < s.segments.length; i += 6) { 
-        particles.push(spawnParticle(s.segments[i].x, s.segments[i].y, s.color, 10, 4, true));
+    // Yemleri küçük ve çok dağınık bırak
+    for(let i=0; i < s.segments.length; i += 5) { 
+        particles.push(spawnParticle(s.segments[i].x, s.segments[i].y, s.color, 6, 4, true));
     }
     if(!s.isBot) document.getElementById("menu").style.display = "block";
 }
@@ -118,7 +122,6 @@ function update() {
 
     snakes.forEach(s => {
         if(!s.alive) { if(s.isBot) { Object.assign(s, spawnBot()); s.segments = []; } return; }
-        
         let speed = (!s.isBot && isAdmin && superMode) ? 20 : (s.isBot ? 8.5 : baseSpeed);
         
         if(s.isBot) {
@@ -144,9 +147,9 @@ function update() {
         s.segments.unshift({x: s.x, y: s.y});
         if(s.segments.length > s.score + 12) s.segments.pop();
 
-        // Yem yeme (Daha geniş mesafe)
+        // Yem yeme (Yemler küçüldüğü için mesafe ayarlandı)
         for(let i = particles.length - 1; i >= 0; i--) {
-            if(Math.abs(s.x - particles[i].x) < 35 && Math.abs(s.y - particles[i].y) < 35) {
+            if(Math.abs(s.x - particles[i].x) < 28 && Math.abs(s.y - particles[i].y) < 28) {
                 s.score += particles[i].value;
                 particles.splice(i, 1);
                 if(particles.length < 250) particles.push(spawnParticle());
@@ -154,13 +157,11 @@ function update() {
             }
         }
 
-        // Çarpışma (Sadece kafa ile diğer vücutlar)
         snakes.forEach(other => {
             if(!other.alive || s === other) return;
-            // Performans için sadece kafa yakınındaysa kontrol et
-            if(Math.abs(s.x - other.x) < 500 && Math.abs(s.y - other.y) < 500) {
+            if(Math.abs(s.x - other.x) < 400 && Math.abs(s.y - other.y) < 400) {
                 for(let i=5; i < other.segments.length; i+=2) {
-                    if(Math.hypot(s.x - other.segments[i].x, s.y - other.segments[i].y) < 22) {
+                    if(Math.hypot(s.x - other.segments[i].x, s.y - other.segments[i].y) < 20) {
                         if(!s.isBot && isAdmin && superMode) { handleDeath(other); s.score += 10; } 
                         else { handleDeath(s); }
                         break;
@@ -177,19 +178,18 @@ function draw() {
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
     
-    // Grid (Sadece kamera çevresindekileri çiz - Performans)
+    // Grid
     ctx.strokeStyle = "#111"; ctx.lineWidth = 1;
     let startX = Math.floor(camera.x / 200) * 200;
     let startY = Math.floor(camera.y / 200) * 200;
     for(let x=startX; x < startX + canvas.width + 200; x+=200) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_SIZE); ctx.stroke(); }
     for(let y=startY; y < startY + canvas.height + 200; y+=200) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_SIZE, y); ctx.stroke(); }
 
-    // Sınırlar
     ctx.strokeStyle = "#400"; ctx.lineWidth = 5; ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
     
-    // Yemler
+    // Küçük Yemler
     particles.forEach(p => {
-        if(p.x > camera.x - 20 && p.x < camera.x + canvas.width + 20 && p.y > camera.y - 20 && p.y < camera.y + canvas.height + 20) {
+        if(p.x > camera.x - 10 && p.x < camera.x + canvas.width + 10 && p.y > camera.y - 10 && p.y < camera.y + canvas.height + 10) {
             ctx.fillStyle = p.color;
             ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
         }
@@ -199,20 +199,18 @@ function draw() {
     snakes.forEach(s => {
         if(!s.alive) return;
         ctx.fillStyle = s.color;
-        // Segmentleri daha az çizerek performansı artır
         for(let i=0; i < s.segments.length; i+= (i===0 ? 1 : 2)) {
             let seg = s.segments[i];
-            if(seg.x > camera.x - 50 && seg.x < camera.x + canvas.width + 50 && seg.y > camera.y - 50 && seg.y < camera.y + canvas.height + 50) {
-                ctx.beginPath(); ctx.arc(seg.x, seg.y, i===0 ? 22 : 16, 0, Math.PI*2); ctx.fill();
+            if(seg.x > camera.x - 40 && seg.x < camera.x + canvas.width + 40 && seg.y > camera.y - 40 && seg.y < camera.y + canvas.height + 40) {
+                ctx.beginPath(); ctx.arc(seg.x, seg.y, i===0 ? 20 : 15, 0, Math.PI*2); ctx.fill();
             }
         }
         if(s.x > camera.x && s.x < camera.x + canvas.width) {
-            ctx.fillStyle = "white"; ctx.font = "14px Arial"; ctx.fillText(s.name, s.x - 20, s.y - 35);
+            ctx.fillStyle = "white"; ctx.font = "bold 13px Arial"; ctx.fillText(s.name, s.x - 20, s.y - 32);
         }
     });
     ctx.restore();
 
-    // Liderlik
     let top = snakes.filter(s => s.alive).sort((a,b) => b.score - a.score).slice(0, 5);
     let html = "<b>LİDERLER</b><br>";
     top.forEach((ts, i) => html += `<div class="row" style="color:${ts.color}">${i+1}. ${ts.name.substring(0,8)} <span>${ts.score}</span></div>`);
